@@ -1,4 +1,4 @@
-# ZedEdit
+# KoEditor
 
 > 웹 + 데스크탑(Windows/macOS) 코드 에디터  
 > **React + Monaco Editor + Electron**
@@ -76,8 +76,8 @@ npm run build:web
 ```bash
 npm run build:electron
 # → release/ 폴더
-#   Windows: ZedEdit Setup x.x.x.exe
-#   macOS:   ZedEdit-x.x.x.dmg
+#   Windows: KoEditor Setup x.x.x.exe
+#   macOS:   KoEditor-x.x.x.dmg
 ```
 
 ---
@@ -85,7 +85,7 @@ npm run build:electron
 ## 프로젝트 구조
 
 ```
-zed-editor/
+koeditor/
 │
 ├── electron/                   ← Electron (데스크탑 래퍼)
 │   ├── main.js                 ← 메인 프로세스: 창/메뉴/IPC/파일시스템
