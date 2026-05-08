@@ -1,6 +1,6 @@
-# KoEditor
+# Koditor
 
-> 웹 + 데스크탑(Windows/macOS) 코드 에디터  
+> 웹 + 데스크탑(Windows/macOS) 코드 에디터
 > **React + Monaco Editor + Electron**
 
 ---
@@ -10,14 +10,19 @@
 | 기능 | 비고 |
 |---|---|
 | 구문 강조 | JS, TS, HTML, CSS, Java, 일반 텍스트 |
-| **열(Column) 블록 선택** | `Alt` + 드래그 |
-| 다중 커서 | `Alt` + 클릭 |
+| **열(Column) 블록 선택** | 보기 메뉴에서 ON/OFF 토글 후 드래그 |
+| 다중 커서 | `Ctrl` + 클릭 |
 | 탭으로 여러 파일 열기 | 이미 열린 파일은 포커스 이동 |
+| 파일 탐색기 사이드바 | 폴더 열기 후 파일 트리 탐색 |
 | 파일 열기 / 저장 / 다른 이름으로 저장 | 단축키 지원 |
+| 최근 파일 목록 | 파일 메뉴에서 최근 파일 5개 표시 |
 | 미저장 경고 | 탭 닫기 시 확인 |
 | 줄 번호, 미니맵, 코드 접기 | 기본 활성화 |
 | 찾기 / 바꾸기 | `Ctrl+F` / `Ctrl+H` |
-| 자동 완성 / 괄호 자동 닫기 | 기본 활성화 |
+| 자동완성 ON/OFF | 보기 메뉴에서 토글 |
+| 라이트 / 다크 테마 | 보기 메뉴에서 토글 |
+| 상태바 커서 위치 표시 | N줄 N열 실시간 표시 |
+| 상태바 글자 수 표시 | 전체 글자 수 / 선택 글자 수 |
 | 웹 브라우저 실행 | Chrome/Edge 권장 |
 | Windows 설치 파일 (.exe) | `npm run build:electron` |
 | macOS 설치 파일 (.dmg) | `npm run build:electron` |
@@ -34,10 +39,21 @@
 | 다른 이름으로 저장 | `Ctrl/Cmd + Shift + S` |
 | 찾기 | `Ctrl/Cmd + F` |
 | 찾아 바꾸기 | `Ctrl/Cmd + H` |
-| **열 블록 선택** | `Alt` + 드래그 |
-| 열 블록 확장 (키보드) | `Shift + Alt + ↑↓←→` |
-| 다중 커서 추가 | `Alt` + 클릭 |
+| 실행 취소 | `Ctrl/Cmd + Z` |
+| 다시 실행 | `Ctrl/Cmd + Y` |
+| 줄 바꿈 토글 | `Alt + Z` |
+| **열 블록 확장 (키보드)** | `Shift + Alt + ↑↓←→` |
 | 위/아래 커서 추가 | `Ctrl + Alt + ↑↓` |
+
+---
+
+## 메뉴 구성
+
+| 메뉴 | 주요 항목 |
+|---|---|
+| 파일 | 새 파일, 파일 열기, 폴더 열기, 저장, 다른 이름으로 저장, 최근 파일 |
+| 편집 | 실행 취소/다시 실행, 잘라내기/복사/붙여넣기, 찾기/바꾸기 |
+| 보기 | 파일 탐색기 토글, 테마 전환, 열 블록 모드, 자동완성 토글, 줄 바꿈 토글 |
 
 ---
 
@@ -76,8 +92,8 @@ npm run build:web
 ```bash
 npm run build:electron
 # → release/ 폴더
-#   Windows: KoEditor Setup x.x.x.exe
-#   macOS:   KoEditor-x.x.x.dmg
+#   Windows: Koditor Setup x.x.x.exe
+#   macOS:   Koditor-x.x.x.dmg
 ```
 
 ---
@@ -85,49 +101,54 @@ npm run build:electron
 ## 프로젝트 구조
 
 ```
-koeditor/
+koditor/
 │
 ├── electron/                   ← Electron (데스크탑 래퍼)
 │   ├── main.js                 ← 메인 프로세스: 창/메뉴/IPC/파일시스템
 │   └── preload.js              ← 보안 브릿지: main ↔ React
 │
 ├── src/                        ← React 앱 (웹/데스크탑 공통)
-│   ├── main.tsx                ← 진입점
+│   ├── main.tsx                ← 진입점 + Monaco Worker 설정
 │   ├── App.tsx                 ← 메인 레이아웃 & 에디터
 │   ├── hooks/
 │   │   └── useEditorStore.ts   ← 탭/상태 관리
 │   ├── utils/
-│   │   └── platform.ts         ← ★ 플랫폼 분기 (Electron ↔ 웹)
+│   │   └── platform.ts         ← 플랫폼 분기 (Electron ↔ 웹)
 │   └── styles/
-│       └── app.css             ← 전체 스타일
+│       └── app.css             ← 전체 스타일 (라이트/다크 테마)
 │
 ├── index.html
 ├── package.json
 ├── vite.config.ts
-└── tsconfig.json
+├── tsconfig.json
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
 
-### 핵심: platform.ts 구조
+---
+
+## 플랫폼별 동작
 
 ```
-openFile()   → Electron: IPC → dialog.showOpenDialog + fs.readFileSync
-             → Web:      showOpenFilePicker (File System Access API)
+openFile()    → Electron: 네이티브 다이얼로그 + fs.readFileSync
+              → Web:      showOpenFilePicker (File System Access API)
 
-saveFile()   → Electron: IPC → fs.writeFileSync
-             → Web:      Blob 다운로드
+openFolder()  → Electron: 네이티브 다이얼로그 + fs 재귀 읽기
+              → Web:      showDirectoryPicker (File System Access API)
 
-saveFileAs() → Electron: IPC → dialog.showSaveDialog + fs.writeFileSync
-             → Web:      Blob 다운로드
+saveFile()    → Electron: fs.writeFileSync
+              → Web:      Blob 다운로드
+
+saveFileAs()  → Electron: 네이티브 저장 다이얼로그 + fs.writeFileSync
+              → Web:      Blob 다운로드
 ```
 
-### Electron 렌더링 일관성
-
-Chromium을 직접 내장하기 때문에 Windows/macOS 모두 **동일한 렌더링**이 보장됩니다.  
+Chromium을 직접 내장하기 때문에 Windows/macOS 모두 **동일한 렌더링**이 보장됩니다.
 Monaco Editor도 VS Code(Electron 기반)와 동일한 환경에서 동작합니다.
 
 ---
 
-## 기능 추가 / 수정
+## 라이선스
 
-모든 소스코드를 Claude에게 보여주고 수정 요청하면 됩니다.
-```
+MIT License — 자세한 내용은 [LICENSE](./LICENSE) 파일을 참고하세요.
