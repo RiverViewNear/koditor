@@ -1,0 +1,523 @@
+/* ═══════════════════════════════════════════════════
+   Koditor — 라이트 테마
+   폰트: Geist (UI) + JetBrains Mono (코드)
+═══════════════════════════════════════════════════ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --c-bg-base:    #f5f5f0;
+  --c-bg-bar:     #ebebE6;
+  --c-bg-tab:     #e2e2dc;
+  --c-bg-active:  #ffffff;
+  --c-bg-hover:   #d8d8d2;
+
+  --c-border:     #d0d0c8;
+  --c-border-mid: #b8b8b0;
+
+  --c-text-hi:    #1a1a1a;
+  --c-text-md:    #4a4a4a;
+  --c-text-lo:    #909088;
+
+  --c-accent:     #1a6bbf;
+  --c-accent-bg:  #ddeeff;
+  --c-dirty:      #b07800;
+  --c-danger:     #c0392b;
+
+  --lang-javascript: #c8a000;
+  --lang-typescript: #2a6db0;
+  --lang-html:       #c0440a;
+  --lang-css:        #2a50c0;
+  --lang-java:       #9a6010;
+  --lang-plaintext:  #909088;
+
+  --h-menu:   36px;
+  --h-tab:    38px;
+  --h-status: 24px;
+
+  --font-ui:   'Geist', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--c-bg-base);
+  color: var(--c-text-hi);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ── 메뉴바 ── */
+.menubar {
+  height: var(--h-menu);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  background: var(--c-bg-bar);
+  border-bottom: 1px solid var(--c-border);
+  user-select: none;
+}
+
+.menubar-brand {
+  padding: 0 16px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--c-accent);
+  border-right: 1px solid var(--c-border);
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.menubar-nav {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.menu-btn {
+  height: 100%;
+  padding: 0 13px;
+  background: none;
+  border: none;
+  color: var(--c-text-md);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.1s, color 0.1s;
+}
+.menu-btn:hover {
+  background: var(--c-bg-hover);
+  color: var(--c-text-hi);
+}
+.menu-btn kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--c-text-lo);
+  background: var(--c-bg-base);
+  border: 1px solid var(--c-border-mid);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+/* 토글 버튼 활성 상태 */
+.menu-btn--toggle {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.menu-btn--active {
+  color: var(--c-accent) !important;
+  background: var(--c-accent-bg) !important;
+}
+.menu-btn--active:hover {
+  background: var(--c-accent-bg) !important;
+}
+
+/* 메뉴 구분선 */
+.menu-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--c-border-mid);
+  margin: 0 4px;
+  align-self: center;
+}
+
+.menubar-hint {
+  margin-left: auto;
+  padding: 0 16px;
+  font-size: 11.5px;
+  color: var(--c-text-lo);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.menubar-hint kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--c-accent);
+  background: var(--c-accent-bg);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* ── 탭바 ── */
+.tabbar {
+  height: var(--h-tab);
+  flex-shrink: 0;
+  display: flex;
+  align-items: stretch;
+  background: var(--c-bg-tab);
+  border-bottom: 1px solid var(--c-border);
+  overflow: hidden;
+}
+
+.tabs-track {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.tabs-track::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 12px;
+  min-width: 110px;
+  max-width: 210px;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: transparent;
+  border-right: 1px solid var(--c-border);
+  color: var(--c-text-lo);
+  font-size: 12.5px;
+  transition: background 0.1s, color 0.1s;
+  user-select: none;
+  position: relative;
+}
+.tab:hover {
+  background: var(--c-bg-hover);
+  color: var(--c-text-md);
+}
+.tab--active {
+  background: var(--c-bg-active);
+  color: var(--c-text-hi);
+}
+.tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--c-accent);
+}
+
+.tab__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--c-text-lo);
+}
+.tab__dot--javascript { background: var(--lang-javascript); }
+.tab__dot--typescript { background: var(--lang-typescript); }
+.tab__dot--html       { background: var(--lang-html); }
+.tab__dot--css        { background: var(--lang-css); }
+.tab__dot--java       { background: var(--lang-java); }
+.tab__dot--plaintext  { background: var(--lang-plaintext); }
+
+.tab__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tab__unsaved {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--c-dirty);
+  flex-shrink: 0;
+}
+
+.tab__close {
+  background: none;
+  border: none;
+  color: var(--c-text-lo);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 1px 3px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.1s, color 0.1s, background 0.1s;
+}
+.tab:hover .tab__close,
+.tab--active .tab__close { opacity: 1; }
+.tab__close:hover {
+  background: var(--c-border);
+  color: var(--c-danger);
+}
+
+.tabbar__add {
+  width: 40px;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  border-left: 1px solid var(--c-border);
+  color: var(--c-text-lo);
+  font-size: 20px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.tabbar__add:hover {
+  background: var(--c-bg-hover);
+  color: var(--c-text-hi);
+}
+
+/* ── 드롭다운 메뉴 ── */
+
+.dropdown {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+}
+.dropdown__trigger {
+  height: 100%;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  color: var(--c-text-md);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: background 0.1s, color 0.1s;
+}
+.dropdown__trigger:hover,
+.dropdown__trigger--open {
+  background: var(--c-bg-hover);
+  color: var(--c-text-hi);
+}
+.dropdown__panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: #ffffff;
+  border: 1px solid var(--c-border);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 999;
+  padding: 3px 0;
+}
+.dropdown__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  color: var(--c-text-hi);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+  gap: 24px;
+  transition: background 0.08s;
+}
+.dropdown__item:hover {
+  background: var(--c-accent-bg);
+  color: var(--c-accent);
+}
+.dropdown__item kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--c-text-lo);
+  flex-shrink: 0;
+}
+.dropdown__sep {
+  height: 1px;
+  background: var(--c-border);
+  margin: 3px 0;
+}
+.menubar-col-badge {
+  margin-left: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--c-accent);
+  background: var(--c-accent-bg);
+  border: 1px solid var(--c-accent);
+  border-radius: 3px;
+  padding: 1px 7px;
+}
+
+/* ── 워크스페이스 ── */
+.workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ── 사이드바 ── */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-bg-bar);
+  border-right: 1px solid var(--c-border);
+  overflow: hidden;
+}
+.sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  height: 32px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--c-border);
+}
+.sidebar__title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--c-text-lo);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar__btn {
+  background: none;
+  border: none;
+  color: var(--c-text-lo);
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+.sidebar__btn:hover {
+  background: var(--c-bg-hover);
+  color: var(--c-text-hi);
+}
+.sidebar__tree {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border) transparent;
+}
+.sidebar__empty {
+  padding: 24px 14px;
+  font-size: 12px;
+  color: var(--c-text-lo);
+  line-height: 1.6;
+  text-align: center;
+}
+.tree-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--c-text-md);
+  white-space: nowrap;
+  overflow: hidden;
+  transition: background 0.08s, color 0.08s;
+  user-select: none;
+}
+.tree-item:hover { background: var(--c-bg-hover); color: var(--c-text-hi); }
+.tree-item--directory { color: var(--c-text-hi); font-weight: 500; }
+.tree-icon {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--c-text-lo);
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+.tree-name { overflow: hidden; text-overflow: ellipsis; flex: 1; }
+
+/* ── 에디터 영역 ── */
+.editor-wrap {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: #ffffff;
+}
+.editor-wrap > section,
+.editor-wrap > div {
+  height: 100% !important;
+}
+
+.editor-loading {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--c-text-lo);
+  background: #ffffff;
+}
+
+/* ── 상태바 ── */
+.statusbar {
+  height: var(--h-status);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  background: var(--c-accent-bg);
+  border-top: 1px solid var(--c-border);
+  user-select: none;
+  overflow: hidden;
+}
+
+.statusbar__left,
+.statusbar__right {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.status-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--c-accent);
+  white-space: nowrap;
+}
+.status-pill--dirty {
+  color: var(--c-dirty);
+}
+
+.status-sep {
+  color: var(--c-text-lo);
+  font-size: 11px;
+  opacity: 0.5;
+}
+
+.status-path {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--c-text-lo);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 400px;
+}
+
+.hint-col {
+  opacity: 0.6;
+}
