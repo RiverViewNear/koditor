@@ -521,3 +521,104 @@ html, body, #root {
 .hint-col {
   opacity: 0.6;
 }
+
+/* ── 다크모드 ─────────────────────────────────────────── */
+body.dark {
+  --c-bg-base:    #0d0d0f;
+  --c-bg-bar:     #131316;
+  --c-bg-tab:     #18181c;
+  --c-bg-active:  #1f1f25;
+  --c-bg-hover:   #1c1c22;
+  --c-border:     #242430;
+  --c-border-mid: #32323f;
+  --c-text-hi:    #e2e2ec;
+  --c-text-md:    #8888a8;
+  --c-text-lo:    #484860;
+  --c-accent:     #6e9fff;
+  --c-accent-bg:  #1a2845;
+  --c-dirty:      #d4a84b;
+  --c-danger:     #e06c75;
+  --lang-javascript: #f0db4f;
+  --lang-typescript: #4a8ec2;
+  --lang-html:       #e26b3a;
+  --lang-css:        #5272d4;
+  --lang-java:       #c08030;
+  --lang-plaintext:  #606075;
+}
+
+body.dark .dropdown__panel {
+  background: #1a1a1f;
+  border-color: #32323f;
+}
+body.dark .dropdown__item {
+  color: #e2e2ec;
+}
+body.dark .dropdown__item:hover {
+  background: #1a2845;
+}
+body.dark .editor-wrap {
+  background: #1e1e1e;
+}
+body.dark .editor-loading {
+  background: #1e1e1e;
+  color: #606075;
+}
+
+/* ── 메뉴바 배지 ─────────────────────────────────────── */
+.menubar-badges {
+  margin-left: auto;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-weight: 500;
+}
+.badge--blue {
+  color: var(--c-accent);
+  background: var(--c-accent-bg);
+  border: 1px solid var(--c-accent);
+}
+.badge--gray {
+  color: var(--c-text-lo);
+  background: var(--c-bg-hover);
+  border: 1px solid var(--c-border-mid);
+}
+.badge--dark {
+  color: var(--c-text-md);
+  background: var(--c-bg-hover);
+  border: 1px solid var(--c-border-mid);
+}
+
+/* ── 드롭다운 최근파일 / 헤더 아이템 ────────────────── */
+.dropdown__item--header {
+  color: var(--c-text-lo) !important;
+  font-size: 10.5px !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: default !important;
+  padding-top: 4px !important;
+}
+.dropdown__item--header:hover {
+  background: none !important;
+  color: var(--c-text-lo) !important;
+}
+.dropdown__item--recent {
+  padding-left: 20px !important;
+  color: var(--c-text-md);
+  font-size: 12px;
+}
+
+/* ── 상태바 추가 pill ─────────────────────────────────── */
+.status-pill--col {
+  color: var(--c-accent);
+}
+.status-pill--off {
+  color: var(--c-dirty);
+}
