@@ -32,11 +32,7 @@ function startLocalServer(distPath) {
 
       try {
         const data = fs.readFileSync(filePath)
-        res.writeHead(200, {
-          'Content-Type': contentType,
-          'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
-          'Cross-Origin-Embedder-Policy': 'unsafe-none',
-        })
+        res.writeHead(200, { 'Content-Type': contentType })
         res.end(data)
       } catch {
         res.writeHead(404)
@@ -140,9 +136,9 @@ function buildMenu(win) {
     {
       label: '파일',
       submenu: [
-        { label: '새 파일',               accelerator: 'CmdOrCtrl+N',       click: () => win.webContents.send('menu:new-file') },
-        { label: '파일 열기...',           accelerator: 'CmdOrCtrl+O',       click: () => win.webContents.send('menu:open-file') },
-        { label: '폴더 열기...',           accelerator: '',                   click: () => win.webContents.send('menu:open-folder') },
+        { label: '새 파일',                accelerator: 'CmdOrCtrl+N',       click: () => win.webContents.send('menu:new-file') },
+        { label: '파일 열기...',            accelerator: 'CmdOrCtrl+O',       click: () => win.webContents.send('menu:open-file') },
+        { label: '폴더 열기...',            accelerator: '',                   click: () => win.webContents.send('menu:open-folder') },
         { type: 'separator' },
         { label: '로컬 파일로 내보내기...', accelerator: 'CmdOrCtrl+Shift+S', click: () => win.webContents.send('menu:save-as') },
         { type: 'separator' },
@@ -167,23 +163,30 @@ function buildMenu(win) {
     {
       label: '보기',
       submenu: [
-        { label: '파일 탐색기 토글', click: () => win.webContents.send('menu:toggle-sidebar') },
-        { label: '테마 전환',        click: () => win.webContents.send('menu:toggle-theme') },
+        { label: '파일 탐색기 토글',  click: () => win.webContents.send('menu:toggle-sidebar') },
+        { label: '테마 전환',         click: () => win.webContents.send('menu:toggle-theme') },
+        { type: 'separator' },
         { label: '열 블록 모드 토글', click: () => win.webContents.send('menu:toggle-column') },
-        { label: '자동완성 토글',    click: () => win.webContents.send('menu:toggle-autocomplete') },
-        { label: '줄 바꿈 토글',    accelerator: 'Alt+Z', click: () => win.webContents.send('menu:toggle-wordwrap') },
+        { label: '자동완성 토글',     click: () => win.webContents.send('menu:toggle-autocomplete') },
+        { label: '줄 바꿈 토글',     accelerator: 'Alt+Z', click: () => win.webContents.send('menu:toggle-wordwrap') },
         { type: 'separator' },
-        { role: 'reload',           label: '새로고침' },
+        { role: 'reload',            label: '새로고침' },
         { type: 'separator' },
-        { role: 'zoomIn',           label: '확대' },
-        { role: 'zoomOut',          label: '축소' },
-        { role: 'resetZoom',        label: '기본 크기' },
+        { role: 'zoomIn',            label: '확대' },
+        { role: 'zoomOut',           label: '축소' },
+        { role: 'resetZoom',         label: '기본 크기' },
         { type: 'separator' },
-        { role: 'togglefullscreen', label: '전체 화면' },
+        { role: 'togglefullscreen',  label: '전체 화면' },
         ...(isDev ? [
           { type: 'separator' },
-          { role: 'toggleDevTools', label: '개발자 도구' },
+          { role: 'toggleDevTools',  label: '개발자 도구' },
         ] : []),
+      ],
+    },
+    {
+      label: '계정',
+      submenu: [
+        { label: '로그아웃', click: () => win.webContents.send('menu:sign-out') },
       ],
     },
   ]

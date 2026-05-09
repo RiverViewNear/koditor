@@ -4,6 +4,7 @@ const VALID_CHANNELS = [
   'menu:new-file', 'menu:open-file', 'menu:open-folder', 'menu:save-as',
   'menu:find', 'menu:replace', 'menu:toggle-sidebar', 'menu:toggle-theme',
   'menu:toggle-column', 'menu:toggle-autocomplete', 'menu:toggle-wordwrap',
+  'menu:sign-out',
 ]
 
 contextBridge.exposeInMainWorld('electronAPI', {

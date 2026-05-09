@@ -275,9 +275,10 @@ export default function App() {
         const cur = editorRef.current?.getOption(130 as Monaco.editor.EditorOption)
         editorRef.current?.updateOptions({ wordWrap: cur === 'off' ? 'on' : 'off' })
       }),
+      onMenuEvent('menu:sign-out', signOut),
     ]
     return () => offs.forEach(off => off())
-  }, [openNewTab, handleOpen, handleOpenFolder, handleSaveAs, sidebarOpen, darkMode, toggleColumnMode, toggleAutoComplete, updateSetting])
+  }, [openNewTab, handleOpen, handleOpenFolder, handleSaveAs, sidebarOpen, darkMode, toggleColumnMode, toggleAutoComplete, updateSetting, signOut])
 
   // ── Monaco 마운트 ──────────────────────────────────────────
   const handleEditorMount: OnMount = (editor, monaco) => {
