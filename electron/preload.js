@@ -5,6 +5,7 @@ const VALID_CHANNELS = [
   'menu:find', 'menu:replace', 'menu:toggle-sidebar', 'menu:toggle-theme',
   'menu:toggle-column', 'menu:toggle-autocomplete', 'menu:toggle-wordwrap',
   'menu:sign-out',
+  'menu:font-increase', 'menu:font-decrease', 'menu:font-reset',
 ]
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -27,6 +28,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // 상태 변경 시 메뉴 재빌드 요청
   updateMenuState: (state) => ipcRenderer.send('menu:update-state', state),
+
+  openFileWithEncoding:   (encoding) => ipcRenderer.invoke('dialog:open-file-encoding', encoding),
+  saveFileWithEncoding:   (filePath, content, encoding) => ipcRenderer.invoke('fs:save-file-encoding', filePath, content, encoding),
+  saveAsWithEncoding:     (defaultName, content, encoding) => ipcRenderer.invoke('dialog:save-as-encoding', defaultName, content, encoding),
 
   platform: process.platform,
 })

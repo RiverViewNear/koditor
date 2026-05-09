@@ -1,96 +1,79 @@
 /**
- * useEditorStore.ts
- * 에디터 전체 상태 관리
+ * useEditorStore.ts — 탭/상태 관리
  */
 
 import { useState, useCallback } from 'react'
 
 export interface Tab {
-  id: string
-  name: string
-  path: string
-  content: string
+  id:           string
+  name:         string
+  path:         string
+  content:      string
   savedContent: string
-  language: string
-  isDirty: boolean
+  language:     string
+  isDirty:      boolean
 }
 
 const uid = () => `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
 export function makeBlankTab(): Tab {
-  return {
-    id: uid(),
-    name: 'untitled.txt',
-    path: '',
-    content: '',
-    savedContent: '',
-    language: 'plaintext',
-    isDirty: false,
-  }
+  return { id: uid(), name: 'untitled.txt', path: '', content: '', savedContent: '', language: 'plaintext', isDirty: false }
 }
 
 export function useEditorStore() {
-  const [tabs, setTabs]         = useState<Tab[]>([makeBlankTab()])
+  const [tabs,     setTabs]     = useState<Tab[]>([makeBlankTab()])
   const [activeId, setActiveId] = useState<string>(tabs[0].id)
 
   const activeTab = tabs.find(t => t.id === activeId) ?? tabs[0]
 
-  // ── Firebase 세션 복원 시 탭 전체 교체 ───────────────────
   const restoreTabs = useCallback((restoredTabs: Tab[], restoredActiveId: string) => {
     setTabs(restoredTabs)
     setActiveId(restoredActiveId)
   }, [])
 
-  // ── 새 탭 ────────────────────────────────────────────────
   const openNewTab = useCallback(() => {
     const tab = makeBlankTab()
     setTabs(prev => [...prev, tab])
     setActiveId(tab.id)
   }, [])
 
-  // ── 파일을 탭으로 열기 ────────────────────────────────────
-  const openFileAsTab = useCallback((
-    name: string,
-    path: string,
-    content: string,
-    language: string,
-  ) => {
+  const openFileAsTab = useCallback((name: string, path: string, content: string, language: string) => {
     setTabs(prev => {
       if (path) {
         const existing = prev.find(t => t.path === path)
-        if (existing) {
-          setActiveId(existing.id)
-          return prev
-        }
+        if (existing) { setActiveId(existing.id); return prev }
       }
-      const tab: Tab = {
-        id: uid(), name, path, content,
-        savedContent: content, language, isDirty: false,
-      }
+      const tab: Tab = { id: uid(), name, path, content, savedContent: content, language, isDirty: false }
       setActiveId(tab.id)
       return [...prev, tab]
     })
   }, [])
 
-  // ── 에디터 내용 변경 ──────────────────────────────────────
   const updateContent = useCallback((tabId: string, content: string) => {
     setTabs(prev => prev.map(t =>
-      t.id === tabId
-        ? { ...t, content, isDirty: content !== t.savedContent }
-        : t
+      t.id === tabId ? { ...t, content, isDirty: content !== t.savedContent } : t
     ))
   }, [])
 
-  // ── 탭 이름 변경 ──────────────────────────────────────────
   const renameTab = useCallback((tabId: string, newName: string) => {
     const trimmed = newName.trim()
     if (!trimmed) return
-    setTabs(prev => prev.map(t =>
-      t.id === tabId ? { ...t, name: trimmed } : t
-    ))
+    setTabs(prev => prev.map(t => t.id === tabId ? { ...t, name: trimmed } : t))
   }, [])
 
-  // ── 저장 완료 처리 ────────────────────────────────────────
+  // 탭 드래그 순서 변경
+  const reorderTabs = useCallback((fromId: string, toId: string) => {
+    setTabs(prev => {
+      const fromIdx = prev.findIndex(t => t.id === fromId)
+      const toIdx   = prev.findIndex(t => t.id === toId)
+      if (fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return prev
+      const next = [...prev]
+      const [moved] = next.splice(fromIdx, 1)
+      next.splice(toIdx, 0, moved)
+      return next
+    })
+  }, [])
+
   const markSaved = useCallback((tabId: string, newPath?: string, newName?: string) => {
     setTabs(prev => prev.map(t =>
       t.id === tabId
@@ -99,7 +82,6 @@ export function useEditorStore() {
     ))
   }, [])
 
-  // ── 탭 닫기 ───────────────────────────────────────────────
   const closeTab = useCallback((tabId: string, onRemoved?: (id: string) => void) => {
     setTabs(prev => {
       if (prev.length === 1) {
@@ -107,14 +89,11 @@ export function useEditorStore() {
         setActiveId(blank.id)
         return [blank]
       }
-      const idx = prev.findIndex(t => t.id === tabId)
+      const idx  = prev.findIndex(t => t.id === tabId)
       const next = prev.filter(t => t.id !== tabId)
-      if (activeId === tabId) {
-        setActiveId(next[Math.min(idx, next.length - 1)].id)
-      }
+      if (activeId === tabId) setActiveId(next[Math.min(idx, next.length - 1)].id)
       return next
     })
-    // setTabs 밖에서 호출 — 비동기 removeTabDoc이 React 상태와 충돌 방지
     setTimeout(() => onRemoved?.(tabId), 0)
   }, [activeId])
 
@@ -122,6 +101,6 @@ export function useEditorStore() {
     tabs, activeId, activeTab,
     setActiveId, restoreTabs,
     openNewTab, openFileAsTab,
-    updateContent, renameTab, markSaved, closeTab,
+    updateContent, renameTab, reorderTabs, markSaved, closeTab,
   }
 }

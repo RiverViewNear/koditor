@@ -76,7 +76,6 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
-    // mainWindow.webContents.openDevTools()
     // 최대화 상태 복원
     if (store.get('windowMaximized', false)) {
       mainWindow.maximize()
@@ -119,12 +118,7 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  // 팝업 창에도 DevTools 열기 (디버깅용)
-  // app.on('browser-window-created', (_, window) => {
-  //   if (window !== mainWindow) {
-  //     window.webContents.openDevTools()
-  //   }
-  // })
+
 
   if (isDev) {
     mainWindow.loadURL(DEV_URL)
@@ -200,6 +194,10 @@ function buildMenu(win, state = {}) {
         { label: autoComplete ? '자동완성 끄기 ✓'      : '자동완성 켜기',      click: () => win.webContents.send('menu:toggle-autocomplete') },
         { label: '줄 바꿈 토글', accelerator: 'Alt+Z',  click: () => win.webContents.send('menu:toggle-wordwrap') },
         { type: 'separator' },
+        { label: '폰트 크기 확대', accelerator: 'CmdOrCtrl+=', click: () => win.webContents.send('menu:font-increase') },
+        { label: '폰트 크기 축소', accelerator: 'CmdOrCtrl+-', click: () => win.webContents.send('menu:font-decrease') },
+        { label: '폰트 크기 기본값', accelerator: 'CmdOrCtrl+0', click: () => win.webContents.send('menu:font-reset') },
+        { type: 'separator' },
         { role: 'reload',            label: '새로고침' },
         { type: 'separator' },
         { role: 'zoomIn',            label: '확대' },
@@ -272,6 +270,51 @@ ipcMain.handle('dialog:save-as', async (_event, defaultName) => {
 
 ipcMain.handle('fs:read-file', async (_event, filePath) => {
   return fs.readFileSync(filePath, 'utf-8')
+})
+
+// 인코딩 지정 파일 열기
+ipcMain.handle('dialog:open-file-encoding', async (_event, encoding) => {
+  const iconv = require('iconv-lite')
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: '지원 파일', extensions: ['txt','js','jsx','ts','tsx','html','htm','css','java'] },
+      { name: '모든 파일', extensions: ['*'] },
+    ],
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+  const filePath = result.filePaths[0]
+  const buf = fs.readFileSync(filePath)
+  const content = iconv.decode(buf, encoding || 'utf-8')
+  return { name: path.basename(filePath), path: filePath, content }
+})
+
+// 인코딩 지정 파일 저장
+ipcMain.handle('fs:save-file-encoding', async (_event, filePath, content, encoding) => {
+  try {
+    const iconv = require('iconv-lite')
+    const buf = iconv.encode(content, encoding || 'utf-8')
+    fs.writeFileSync(filePath, buf)
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+})
+
+// 인코딩 지정 다른 이름으로 저장
+ipcMain.handle('dialog:save-as-encoding', async (_event, defaultName, content, encoding) => {
+  const iconv = require('iconv-lite')
+  const result = await dialog.showSaveDialog({
+    defaultPath: defaultName,
+    filters: [
+      { name: '지원 파일', extensions: ['txt','js','jsx','ts','tsx','html','htm','css','java'] },
+      { name: '모든 파일', extensions: ['*'] },
+    ],
+  })
+  if (result.canceled || !result.filePath) return null
+  const buf = iconv.encode(content, encoding || 'utf-8')
+  fs.writeFileSync(result.filePath, buf)
+  return result.filePath
 })
 
 ipcMain.handle('dialog:open-folder', async () => {

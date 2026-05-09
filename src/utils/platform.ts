@@ -26,6 +26,9 @@ declare global {
       openAuthBrowser: (authUrl: string) => Promise<boolean>
       startAuthServer: (port: number) => Promise<{ code: string; state: string }>
       openFolderByPath: (folderPath: string) => Promise<{ name: string; path: string; entries: FolderEntry[] } | null>
+      openFileWithEncoding: (encoding: string) => Promise<{ name: string; path: string; content: string } | null>
+      saveFileWithEncoding: (path: string, content: string, encoding: string) => Promise<{ success: boolean; error?: string }>
+      saveAsWithEncoding: (defaultName: string, content: string, encoding: string) => Promise<string | null>
       platform: 'darwin' | 'win32' | 'linux'
     }
   }
