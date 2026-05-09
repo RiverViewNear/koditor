@@ -24,5 +24,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.removeListener(channel, callback)
   },
 
+  // 상태 변경 시 메뉴 재빌드 요청
+  updateMenuState: (state) => ipcRenderer.send('menu:update-state', state),
+
   platform: process.platform,
 })

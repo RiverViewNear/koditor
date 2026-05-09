@@ -99,6 +99,19 @@ export default function App() {
     document.body.classList.toggle('dark', darkMode)
   }, [darkMode])
 
+  // ── Electron 메뉴 상태 동기화 ───────────────────────────────
+  useEffect(() => {
+    if (!isElectron()) return
+    if (!(window as any).electronAPI?.updateMenuState) return
+    ;(window as any).electronAPI.updateMenuState({
+      userName:     user?.displayName ?? user?.email ?? null,
+      sidebarOpen,
+      darkMode,
+      columnMode,
+      autoComplete,
+    })
+  }, [user, sidebarOpen, darkMode, columnMode, autoComplete])
+
   // ── 네트워크 상태 감지 ────────────────────────────────────
   useEffect(() => {
     const online = () => {

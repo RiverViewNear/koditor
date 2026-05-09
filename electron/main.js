@@ -115,8 +115,13 @@ function createWindow() {
   buildMenu(mainWindow)
 }
 
-function buildMenu(win) {
-  const isMac = process.platform === 'darwin'
+function buildMenu(win, state = {}) {
+  const isMac        = process.platform === 'darwin'
+  const userName     = state.userName     || null
+  const sidebarOpen  = state.sidebarOpen  !== false
+  const darkMode     = state.darkMode     || false
+  const columnMode   = state.columnMode   || false
+  const autoComplete = state.autoComplete !== false
 
   const template = [
     ...(isMac ? [{
@@ -163,12 +168,12 @@ function buildMenu(win) {
     {
       label: '보기',
       submenu: [
-        { label: '파일 탐색기 토글',  click: () => win.webContents.send('menu:toggle-sidebar') },
-        { label: '테마 전환',         click: () => win.webContents.send('menu:toggle-theme') },
+        { label: sidebarOpen  ? '파일 탐색기 숨기기 ✓' : '파일 탐색기 보이기', click: () => win.webContents.send('menu:toggle-sidebar') },
+        { label: darkMode     ? '🌙 다크 테마 ✓'       : '☀️ 라이트 테마',     click: () => win.webContents.send('menu:toggle-theme') },
         { type: 'separator' },
-        { label: '열 블록 모드 토글', click: () => win.webContents.send('menu:toggle-column') },
-        { label: '자동완성 토글',     click: () => win.webContents.send('menu:toggle-autocomplete') },
-        { label: '줄 바꿈 토글',     accelerator: 'Alt+Z', click: () => win.webContents.send('menu:toggle-wordwrap') },
+        { label: columnMode   ? '열 블록 모드 끄기 ✓'  : '열 블록 모드 켜기',  click: () => win.webContents.send('menu:toggle-column') },
+        { label: autoComplete ? '자동완성 끄기 ✓'      : '자동완성 켜기',      click: () => win.webContents.send('menu:toggle-autocomplete') },
+        { label: '줄 바꿈 토글', accelerator: 'Alt+Z',  click: () => win.webContents.send('menu:toggle-wordwrap') },
         { type: 'separator' },
         { role: 'reload',            label: '새로고침' },
         { type: 'separator' },
@@ -186,6 +191,10 @@ function buildMenu(win) {
     {
       label: '계정',
       submenu: [
+        ...(userName ? [
+          { label: userName, enabled: false },
+          { type: 'separator' },
+        ] : []),
         { label: '로그아웃', click: () => win.webContents.send('menu:sign-out') },
       ],
     },
@@ -266,6 +275,11 @@ function readDirSync(dirPath, supportedExts = ['txt','js','jsx','ts','tsx','html
     return a.name.localeCompare(b.name)
   })
 }
+
+// ── 상태 변경 시 메뉴 재빌드 ────────────────────────────────
+ipcMain.on('menu:update-state', (_event, state) => {
+  if (mainWindow) buildMenu(mainWindow, state)
+})
 
 // ── 앱 라이프사이클 ───────────────────────────────────────
 app.whenReady().then(() => {
