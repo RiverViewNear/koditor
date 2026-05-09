@@ -23,6 +23,8 @@ declare global {
       readFile: (path: string) => Promise<string>
       onMenuEvent: (channel: string, cb: () => void) => void
       offMenuEvent: (channel: string, cb: () => void) => void
+      openAuthBrowser: (authUrl: string) => Promise<boolean>
+      startAuthServer: (port: number) => Promise<{ code: string; state: string }>
       platform: 'darwin' | 'win32' | 'linux'
     }
   }

@@ -261,13 +261,23 @@ export default function App() {
   useEffect(() => {
     if (!isElectron()) return
     const offs = [
-      onMenuEvent('menu:new-file',    openNewTab),
-      onMenuEvent('menu:open-file',   handleOpen),
-      onMenuEvent('menu:open-folder', handleOpenFolder),
-      onMenuEvent('menu:save-as',     handleSaveAs),
+      onMenuEvent('menu:new-file',           openNewTab),
+      onMenuEvent('menu:open-file',          handleOpen),
+      onMenuEvent('menu:open-folder',        handleOpenFolder),
+      onMenuEvent('menu:save-as',            handleSaveAs),
+      onMenuEvent('menu:find',               () => editorRef.current?.trigger('', 'actions.find', null)),
+      onMenuEvent('menu:replace',            () => editorRef.current?.trigger('', 'editor.action.startFindReplaceAction', null)),
+      onMenuEvent('menu:toggle-sidebar',     () => updateSetting('sidebarOpen', !sidebarOpen)),
+      onMenuEvent('menu:toggle-theme',       () => updateSetting('darkMode', !darkMode)),
+      onMenuEvent('menu:toggle-column',      toggleColumnMode),
+      onMenuEvent('menu:toggle-autocomplete',toggleAutoComplete),
+      onMenuEvent('menu:toggle-wordwrap',    () => {
+        const cur = editorRef.current?.getOption(130 as Monaco.editor.EditorOption)
+        editorRef.current?.updateOptions({ wordWrap: cur === 'off' ? 'on' : 'off' })
+      }),
     ]
     return () => offs.forEach(off => off())
-  }, [openNewTab, handleOpen, handleOpenFolder, handleSaveAs])
+  }, [openNewTab, handleOpen, handleOpenFolder, handleSaveAs, sidebarOpen, darkMode, toggleColumnMode, toggleAutoComplete, updateSetting])
 
   // ── Monaco 마운트 ──────────────────────────────────────────
   const handleEditorMount: OnMount = (editor, monaco) => {
