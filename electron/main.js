@@ -1,11 +1,50 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron')
 const path = require('path')
 const fs   = require('fs')
+const http = require('http')
 
 const isDev   = process.env.NODE_ENV === 'development' || !app.isPackaged
 const DEV_URL = 'http://localhost:1420'
 
-let mainWindow = null
+let mainWindow    = null
+let localServer   = null
+const LOCAL_PORT  = 9123
+
+// ── 로컬 정적 파일 서버 (file:// 대신 http://localhost 사용) ──
+function startLocalServer(distPath) {
+  return new Promise((resolve) => {
+    localServer = http.createServer((req, res) => {
+      let filePath = path.join(distPath, req.url === '/' ? 'index.html' : req.url)
+
+      // SPA 라우팅: 파일 없으면 index.html
+      if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(distPath, 'index.html')
+      }
+
+      const ext = path.extname(filePath).toLowerCase()
+      const mimeTypes = {
+        '.html': 'text/html', '.js': 'application/javascript',
+        '.css': 'text/css',   '.json': 'application/json',
+        '.png': 'image/png',  '.svg': 'image/svg+xml',
+        '.ico': 'image/x-icon', '.woff2': 'font/woff2',
+      }
+      const contentType = mimeTypes[ext] || 'application/octet-stream'
+
+      try {
+        const data = fs.readFileSync(filePath)
+        res.writeHead(200, { 'Content-Type': contentType })
+        res.end(data)
+      } catch {
+        res.writeHead(404)
+        res.end('Not found')
+      }
+    })
+
+    localServer.listen(LOCAL_PORT, '127.0.0.1', () => {
+      resolve(`http://127.0.0.1:${LOCAL_PORT}`)
+    })
+  })
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -27,6 +66,18 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
+    mainWindow.webContents.openDevTools()
+  })
+
+  // COOP 헤더 설정 — Google 로그인 팝업이 닫히지 않는 문제 방지
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Cross-Origin-Opener-Policy': ['same-origin-allow-popups'],
+        'Cross-Origin-Embedder-Policy': ['unsafe-none'],
+      },
+    })
   })
 
   // Google 로그인 팝업 — 메뉴 숨김 처리
@@ -217,5 +268,6 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  if (localServer) localServer.close()
   if (process.platform !== 'darwin') app.quit()
 })
