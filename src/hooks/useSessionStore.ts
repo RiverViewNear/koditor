@@ -1,29 +1,19 @@
 /**
  * useSessionStore.ts
- *
- * Firebase에 탭 세션 전체를 저장/복원
- * 경로: users/{uid}/session/
- *   - tabs: 탭 목록 (id, name, language)
- *   - activeId: 현재 활성 탭 ID
- *   - docs/{tabId}: 각 탭의 내용
- *
- * 동작:
- *   - 로그인 후 Firebase에서 마지막 세션 복원
- *   - 탭 추가/삭제/전환 시 Firebase에 자동 저장
- *   - 새로고침/다른 기기에서 열어도 그대로 복원
+ * - 세션 복원 시 Firebase 실패하면 localStorage 백업에서 복원
+ * - 탭 이름 변경 시 즉시 저장 지원
+ * - 세션 저장 시 localStorage에도 백업
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react'
 import {
-  ref,
-  set,
-  get,
-  remove,
-  serverTimestamp,
+  ref, set, get, remove, serverTimestamp,
 } from 'firebase/database'
 import { db } from '../firebase'
 import type { User } from 'firebase/auth'
 import type { Tab } from './useEditorStore'
+
+const BACKUP_KEY = 'koditor:sessionBackup'
 
 interface SessionTab {
   id: string
@@ -38,15 +28,41 @@ interface UseSessionStoreOptions {
   onSessionLoaded: (tabs: Tab[], activeId: string) => void
 }
 
+// localStorage 백업 저장
+function saveBackup(tabs: Tab[], activeId: string) {
+  try {
+    const data = {
+      tabs: tabs.map(t => ({ id: t.id, name: t.name, language: t.language, content: t.content })),
+      activeId,
+    }
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(data))
+  } catch {}
+}
+
+// localStorage 백업 로드
+function loadBackup(): { tabs: Tab[]; activeId: string } | null {
+  try {
+    const raw = localStorage.getItem(BACKUP_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (!data.tabs?.length) return null
+    return {
+      tabs: data.tabs.map((t: any) => ({
+        id: t.id, name: t.name, path: '', content: t.content ?? '',
+        savedContent: t.content ?? '', language: t.language ?? 'plaintext', isDirty: false,
+      })),
+      activeId: data.activeId,
+    }
+  } catch { return null }
+}
+
 export function useSessionStore({
-  user,
-  tabs,
-  activeId,
-  onSessionLoaded,
+  user, tabs, activeId, onSessionLoaded,
 }: UseSessionStoreOptions) {
   const [sessionLoaded, setSessionLoaded] = useState(false)
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isLoading = useRef(false)
+  const saveTimer    = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isLoading    = useRef(false)
+  const forceNow     = useRef(false)
 
   // ── 앱 시작 시 세션 복원 ──────────────────────────────────
   useEffect(() => {
@@ -55,42 +71,52 @@ export function useSessionStore({
     const load = async () => {
       isLoading.current = true
       try {
-        const sessionRef = ref(db, `users/${user.uid}/session`)
-        const snap = await get(sessionRef)
+        const snap = await get(ref(db, `users/${user.uid}/session`))
         const data = snap.val()
 
-        if (!data || !data.tabs || data.tabs.length === 0) {
-          // Firebase에 세션 없음 → 기본 빈 탭으로 시작
+        if (!data?.tabs?.length) {
+          // Firebase에 세션 없음 → 백업 시도
+          const backup = loadBackup()
+          if (backup) {
+            onSessionLoaded(backup.tabs, backup.activeId)
+          }
           setSessionLoaded(true)
           return
         }
 
-        // 각 탭의 내용 불러오기
+        // 각 탭 내용 병렬로 불러오기
         const restoredTabs: Tab[] = await Promise.all(
           (data.tabs as SessionTab[]).map(async (t) => {
-            const docRef = ref(db, `users/${user.uid}/docs/${t.id}`)
-            const docSnap = await get(docRef)
-            const docData = docSnap.val()
-            const content = docData?.content ?? ''
-            return {
-              id: t.id,
-              name: t.name,
-              path: '',
-              content,
-              savedContent: content,
-              language: t.language ?? 'plaintext',
-              isDirty: false,
+            try {
+              const docSnap = await get(ref(db, `users/${user.uid}/docs/${t.id}`))
+              const content = docSnap.val()?.content ?? ''
+              return {
+                id: t.id, name: t.name, path: '', content,
+                savedContent: content, language: t.language ?? 'plaintext', isDirty: false,
+              }
+            } catch {
+              return {
+                id: t.id, name: t.name, path: '', content: '',
+                savedContent: '', language: t.language ?? 'plaintext', isDirty: false,
+              }
             }
           })
         )
 
-        const restoredActiveId = data.activeId && restoredTabs.find(t => t.id === data.activeId)
+        const restoredActiveId = restoredTabs.find(t => t.id === data.activeId)
           ? data.activeId
           : restoredTabs[0].id
 
         onSessionLoaded(restoredTabs, restoredActiveId)
+        saveBackup(restoredTabs, restoredActiveId)
+
       } catch (err) {
-        console.warn('세션 복원 실패:', err)
+        console.warn('Firebase 세션 로드 실패, 백업에서 복원:', err)
+        // Firebase 실패 → localStorage 백업으로 복원
+        const backup = loadBackup()
+        if (backup) {
+          onSessionLoaded(backup.tabs, backup.activeId)
+        }
       } finally {
         isLoading.current = false
         setSessionLoaded(true)
@@ -100,36 +126,49 @@ export function useSessionStore({
     load()
   }, [user, sessionLoaded, onSessionLoaded])
 
-  // ── 탭 목록 + 활성 탭 변경 시 Firebase에 저장 ─────────────
-  const saveSession = useCallback(() => {
+  // ── 세션 저장 (디바운스 500ms, 탭 이름 변경 시 즉시) ──────
+  const saveSession = useCallback((immediate = false) => {
     if (!user || !sessionLoaded || isLoading.current) return
 
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(async () => {
+    const doSave = async () => {
       try {
         const sessionTabs: SessionTab[] = tabs.map(t => ({
-          id: t.id,
-          name: t.name,
-          language: t.language,
+          id: t.id, name: t.name, language: t.language,
         }))
-
         await set(ref(db, `users/${user.uid}/session`), {
-          tabs: sessionTabs,
-          activeId,
-          updatedAt: serverTimestamp(),
+          tabs: sessionTabs, activeId, updatedAt: serverTimestamp(),
         })
+        // 로컬 백업도 동시 업데이트
+        saveBackup(tabs, activeId)
       } catch (err) {
         console.warn('세션 저장 실패:', err)
+        // Firebase 실패해도 로컬 백업은 저장
+        saveBackup(tabs, activeId)
       }
-    }, 500)
+    }
+
+    if (immediate || forceNow.current) {
+      forceNow.current = false
+      if (saveTimer.current) clearTimeout(saveTimer.current)
+      doSave()
+      return
+    }
+
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(doSave, 500)
   }, [user, sessionLoaded, tabs, activeId])
 
-  // tabs 또는 activeId 변경 시 자동 저장
   useEffect(() => {
     saveSession()
   }, [saveSession])
 
-  // ── 탭 닫을 때 해당 탭 데이터 Firebase에서 삭제 ──────────
+  // 탭 이름 변경 시 즉시 저장 트리거
+  const saveSessionNow = useCallback(() => {
+    forceNow.current = true
+    saveSession(true)
+  }, [saveSession])
+
+  // 탭 닫을 때 Firebase에서 탭 데이터 삭제
   const removeTabDoc = useCallback(async (tabId: string) => {
     if (!user) return
     try {
@@ -139,5 +178,5 @@ export function useSessionStore({
     }
   }, [user])
 
-  return { sessionLoaded, removeTabDoc }
+  return { sessionLoaded, removeTabDoc, saveSessionNow }
 }

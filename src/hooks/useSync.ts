@@ -1,8 +1,8 @@
 /**
  * useSync.ts
  * Firebase Realtime Database 실시간 동기화
- * - 오프라인 시 로컬 캐시에 저장 → 온라인 복구 시 자동 동기화
- * - 탭별로 독립적인 문서 관리
+ * - activeId 변경 시 이전 리스너 확실히 정리
+ * - 디바운스 타이머도 탭 전환 시 초기화
  */
 
 import { useEffect, useRef, useCallback } from 'react'
@@ -14,6 +14,7 @@ import {
   goOnline,
   goOffline,
   type DatabaseReference,
+  type Unsubscribe,
 } from 'firebase/database'
 import { db } from '../firebase'
 import type { User } from 'firebase/auth'
@@ -21,27 +22,45 @@ import type { User } from 'firebase/auth'
 interface SyncOptions {
   user: User
   docId: string
-  content: string           // 초기값 — Firebase에 데이터 없을 때 사용
+  content: string
   onRemoteChange: (content: string) => void
 }
 
 export function useSync({ user, docId, content, onRemoteChange }: SyncOptions) {
   const docRef        = useRef<DatabaseReference | null>(null)
+  const unsubscribeRef = useRef<Unsubscribe | null>(null)
   const isRemote      = useRef(false)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSaved     = useRef<string>('')
+  const currentDocId  = useRef<string>('')
 
-  // Firebase 경로: users/{uid}/docs/{docId}
   useEffect(() => {
     if (!user) return
+
+    // ── 탭 전환 시 이전 리스너 + 타이머 완전 정리 ──────────
+    if (unsubscribeRef.current) {
+      unsubscribeRef.current()
+      unsubscribeRef.current = null
+    }
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current)
+      debounceTimer.current = null
+    }
+
+    // 탭이 바뀌면 lastSaved 초기화 (이전 탭 내용과 혼동 방지)
+    if (currentDocId.current !== docId) {
+      lastSaved.current = ''
+      currentDocId.current = docId
+    }
+
     docRef.current = ref(db, `users/${user.uid}/docs/${encodeKey(docId)}`)
 
-    // 원격 변경 수신
-    const unsubscribe = onValue(docRef.current, (snapshot) => {
+    // 새 탭 리스너 등록
+    unsubscribeRef.current = onValue(docRef.current, (snapshot) => {
       const data = snapshot.val()
 
       if (!data) {
-        // Firebase에 데이터가 없으면 현재 에디터 내용을 초기값으로 저장
+        // Firebase에 데이터 없으면 현재 내용을 초기값으로 저장
         if (content) {
           set(docRef.current!, {
             content,
@@ -61,10 +80,19 @@ export function useSync({ user, docId, content, onRemoteChange }: SyncOptions) {
       isRemote.current = false
     })
 
-    return () => unsubscribe()
-  }, [user, docId, content, onRemoteChange])
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current()
+        unsubscribeRef.current = null
+      }
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current)
+        debounceTimer.current = null
+      }
+    }
+  }, [user, docId]) // onRemoteChange, content는 의도적으로 제외 (탭 전환 시에만 재구독)
 
-  // 로컬 변경 → Firebase에 저장 (300ms 디바운스)
+  // 로컬 변경 → Firebase 저장 (300ms 디바운스)
   const syncToRemote = useCallback((newContent: string) => {
     if (isRemote.current) return
     if (!docRef.current) return
@@ -81,7 +109,6 @@ export function useSync({ user, docId, content, onRemoteChange }: SyncOptions) {
           updatedBy: user.uid,
         })
       } catch (err) {
-        // 오프라인 시 Firebase SDK가 자동으로 큐에 쌓아둠
         console.warn('동기화 대기 중 (오프라인):', err)
       }
     }, 300)
@@ -90,11 +117,9 @@ export function useSync({ user, docId, content, onRemoteChange }: SyncOptions) {
   return { syncToRemote }
 }
 
-// Firebase 키에 사용 불가한 문자 치환 (. # $ [ ] /)
 function encodeKey(key: string): string {
   return key.replace(/[.#$[\]/]/g, '_')
 }
 
-// 오프라인/온라인 수동 제어 (필요 시 사용)
 export const goDbOnline  = () => goOnline(db)
 export const goDbOffline = () => goOffline(db)

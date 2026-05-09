@@ -37,12 +37,15 @@
     "files": ["dist/**/*", "electron/**/*"],
     "win": {
       "target": ["nsis"],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "signingHashAlgorithms": null,
+      "sign": null
     },
     "mac": {
       "target": ["dmg"],
       "icon": "assets/icon.icns",
-      "category": "public.app-category.developer-tools"
+      "category": "public.app-category.developer-tools",
+      "identity": null
     },
     "linux": {
       "target": ["deb", "AppImage"],
