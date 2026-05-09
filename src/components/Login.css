@@ -1,0 +1,97 @@
+.login {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f0;
+  font-family: 'Geist', system-ui, sans-serif;
+}
+
+.login__card {
+  background: #ffffff;
+  border: 1px solid #d0d0c8;
+  border-radius: 12px;
+  padding: 48px 40px;
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+.login__logo {
+  margin-bottom: 4px;
+}
+
+.login__logo-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a6bbf;
+  letter-spacing: 0.08em;
+}
+
+.login__desc {
+  font-size: 14px;
+  color: #4a4a4a;
+  text-align: center;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.login__google-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  background: #ffffff;
+  border: 1px solid #d0d0c8;
+  border-radius: 6px;
+  font-family: 'Geist', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background 0.1s, box-shadow 0.1s;
+  justify-content: center;
+}
+
+.login__google-btn:hover {
+  background: #f5f5f0;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.login__google-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login__notice {
+  font-size: 11.5px;
+  color: #909088;
+  text-align: center;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* 다크모드 */
+body.dark .login {
+  background: #0d0d0f;
+}
+body.dark .login__card {
+  background: #18181c;
+  border-color: #242430;
+}
+body.dark .login__desc {
+  color: #8888a8;
+}
+body.dark .login__google-btn {
+  background: #1f1f25;
+  border-color: #32323f;
+  color: #e2e2ec;
+}
+body.dark .login__google-btn:hover {
+  background: #242430;
+}

@@ -622,3 +622,38 @@ body.dark .editor-loading {
 .status-pill--off {
   color: var(--c-dirty);
 }
+
+/* ── 계정 아바타 ─────────────────────────────────────── */
+.menubar-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* ── 앱 로딩 화면 ─────────────────────────────────────── */
+.app-loading {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--c-text-lo);
+  background: var(--c-bg-base);
+}
+
+/* ── 탭 이름 편집 인풋 ───────────────────────────────────── */
+.tab__name-input {
+  flex: 1;
+  background: var(--c-bg-base);
+  border: 1px solid var(--c-accent);
+  border-radius: 2px;
+  color: var(--c-text-hi);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  padding: 0 4px;
+  height: 20px;
+  outline: none;
+  min-width: 0;
+}

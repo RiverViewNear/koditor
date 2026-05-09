@@ -1,10 +1,6 @@
 /**
  * useEditorStore.ts
- *
  * 에디터 전체 상태 관리
- *   - 열린 탭 목록
- *   - 활성 탭
- *   - 탭별 내용 / 저장 여부 / 언어
  */
 
 import { useState, useCallback } from 'react'
@@ -12,17 +8,16 @@ import { useState, useCallback } from 'react'
 export interface Tab {
   id: string
   name: string
-  path: string           // 실제 파일 경로 (웹에선 파일명만)
-  content: string        // 현재 에디터 내용
-  savedContent: string   // 마지막 저장 시점의 내용
-  language: string       // Monaco 언어 ID
-  isDirty: boolean       // 미저장 변경사항 여부
+  path: string
+  content: string
+  savedContent: string
+  language: string
+  isDirty: boolean
 }
 
-let _id = 0
-const uid = () => `tab-${++_id}`
+const uid = () => `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
-function makeBlankTab(): Tab {
+export function makeBlankTab(): Tab {
   return {
     id: uid(),
     name: 'untitled.txt',
@@ -35,20 +30,25 @@ function makeBlankTab(): Tab {
 }
 
 export function useEditorStore() {
-  const [tabs, setTabs] = useState<Tab[]>([makeBlankTab()])
+  const [tabs, setTabs]         = useState<Tab[]>([makeBlankTab()])
   const [activeId, setActiveId] = useState<string>(tabs[0].id)
 
   const activeTab = tabs.find(t => t.id === activeId) ?? tabs[0]
 
-  // ── 새 탭 ────────────────────────────────────────────
+  // ── Firebase 세션 복원 시 탭 전체 교체 ───────────────────
+  const restoreTabs = useCallback((restoredTabs: Tab[], restoredActiveId: string) => {
+    setTabs(restoredTabs)
+    setActiveId(restoredActiveId)
+  }, [])
+
+  // ── 새 탭 ────────────────────────────────────────────────
   const openNewTab = useCallback(() => {
     const tab = makeBlankTab()
     setTabs(prev => [...prev, tab])
     setActiveId(tab.id)
   }, [])
 
-  // ── 파일을 탭으로 열기 ────────────────────────────────
-  // 이미 열린 파일이면 해당 탭으로 포커스만 이동
+  // ── 파일을 탭으로 열기 ────────────────────────────────────
   const openFileAsTab = useCallback((
     name: string,
     path: string,
@@ -72,7 +72,7 @@ export function useEditorStore() {
     })
   }, [])
 
-  // ── 에디터 내용 변경 ──────────────────────────────────
+  // ── 에디터 내용 변경 ──────────────────────────────────────
   const updateContent = useCallback((tabId: string, content: string) => {
     setTabs(prev => prev.map(t =>
       t.id === tabId
@@ -81,32 +81,31 @@ export function useEditorStore() {
     ))
   }, [])
 
-  // ── 저장 완료 처리 ────────────────────────────────────
-  const markSaved = useCallback((
-    tabId: string,
-    newPath?: string,
-    newName?: string,
-  ) => {
+  // ── 탭 이름 변경 ──────────────────────────────────────────
+  const renameTab = useCallback((tabId: string, newName: string) => {
+    const trimmed = newName.trim()
+    if (!trimmed) return
+    setTabs(prev => prev.map(t =>
+      t.id === tabId ? { ...t, name: trimmed } : t
+    ))
+  }, [])
+
+  // ── 저장 완료 처리 ────────────────────────────────────────
+  const markSaved = useCallback((tabId: string, newPath?: string, newName?: string) => {
     setTabs(prev => prev.map(t =>
       t.id === tabId
-        ? {
-            ...t,
-            savedContent: t.content,
-            isDirty: false,
-            path: newPath ?? t.path,
-            name: newName ?? t.name,
-          }
+        ? { ...t, savedContent: t.content, isDirty: false, path: newPath ?? t.path, name: newName ?? t.name }
         : t
     ))
   }, [])
 
-  // ── 탭 닫기 ───────────────────────────────────────────
-  const closeTab = useCallback((tabId: string) => {
+  // ── 탭 닫기 ───────────────────────────────────────────────
+  const closeTab = useCallback((tabId: string, onRemoved?: (id: string) => void) => {
     setTabs(prev => {
       if (prev.length === 1) {
-        // 마지막 탭: 닫지 않고 빈 탭으로 초기화
         const blank = makeBlankTab()
         setActiveId(blank.id)
+        onRemoved?.(tabId)
         return [blank]
       }
       const idx = prev.findIndex(t => t.id === tabId)
@@ -114,19 +113,15 @@ export function useEditorStore() {
       if (activeId === tabId) {
         setActiveId(next[Math.min(idx, next.length - 1)].id)
       }
+      onRemoved?.(tabId)
       return next
     })
   }, [activeId])
 
   return {
-    tabs,
-    activeId,
-    activeTab,
-    setActiveId,
-    openNewTab,
-    openFileAsTab,
-    updateContent,
-    markSaved,
-    closeTab,
+    tabs, activeId, activeTab,
+    setActiveId, restoreTabs,
+    openNewTab, openFileAsTab,
+    updateContent, renameTab, markSaved, closeTab,
   }
 }

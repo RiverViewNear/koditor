@@ -2,19 +2,20 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Editor, { OnMount } from '@monaco-editor/react'
 import type * as Monaco from 'monaco-editor'
 import { useEditorStore } from './hooks/useEditorStore'
+import { useAuth } from './hooks/useAuth'
+import { useSync } from './hooks/useSync'
+import { useSessionStore } from './hooks/useSessionStore'
+import { Login } from './components/Login'
 import {
-  openFile, saveFile, saveFileAs,
+  openFile, saveFileAs,
   getLanguage, onMenuEvent, isElectron,
   openFolder, type FolderEntry,
 } from './utils/platform'
 import './styles/app.css'
 
-// ── 최근 파일 목록 (localStorage) ─────────────────────────
 const RECENT_KEY = 'koditor:recentFiles'
 const MAX_RECENT = 10
-
 interface RecentFile { name: string; path: string }
-
 function loadRecent(): RecentFile[] {
   try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]') } catch { return [] }
 }
@@ -27,14 +28,14 @@ function pushRecent(name: string, path: string) {
   saveRecent([{ name, path }, ...list])
 }
 
-// ── 메인 컴포넌트 ──────────────────────────────────────────
 export default function App() {
   const {
     tabs, activeId, activeTab,
-    setActiveId, openNewTab, openFileAsTab,
-    updateContent, markSaved, closeTab,
+    setActiveId, restoreTabs, openNewTab, openFileAsTab,
+    updateContent, renameTab, markSaved, closeTab,
   } = useEditorStore()
 
+  const { user, loading, signIn, signOut } = useAuth()
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
 
   // ── UI 상태 ───────────────────────────────────────────────
@@ -47,23 +48,101 @@ export default function App() {
   const [folderTree,    setFolderTree]    = useState<FolderEntry[]>([])
   const [expandedDirs,  setExpandedDirs]  = useState<Set<string>>(new Set())
   const [recentFiles,   setRecentFiles]   = useState<RecentFile[]>(loadRecent)
+  const [syncStatus,    setSyncStatus]    = useState<'saved' | 'saving' | 'offline'>('saved')
+  const [cursorInfo,    setCursorInfo]    = useState({ line: 1, col: 1, selected: 0, total: 0 })
 
-  // ── 커서/글자 수 상태 ─────────────────────────────────────
-  const [cursorInfo, setCursorInfo] = useState({ line: 1, col: 1, selected: 0, total: 0 })
+  // ── 탭 이름 변경 상태 ─────────────────────────────────────
+  const [editingTabId,  setEditingTabId]  = useState<string | null>(null)
+  const [editingName,   setEditingName]   = useState('')
+  const tabInputRef = useRef<HTMLInputElement | null>(null)
 
-  // 메뉴 외부 클릭 닫기
+  // ── 세션 복원 ─────────────────────────────────────────────
+  const { sessionLoaded, removeTabDoc } = useSessionStore({
+    user: user!,
+    tabs,
+    activeId,
+    onSessionLoaded: restoreTabs,
+  })
+
+  // ── Firebase 실시간 동기화 ────────────────────────────────
+  const { syncToRemote } = useSync({
+    user: user!,
+    docId: activeId,
+    content: activeTab?.content ?? '',
+    onRemoteChange: useCallback((remoteContent: string) => {
+      updateContent(activeId, remoteContent)
+      const model = editorRef.current?.getModel()
+      if (model && model.getValue() !== remoteContent) {
+        editorRef.current?.executeEdits('remote', [{
+          range: model.getFullModelRange(),
+          text: remoteContent,
+        }])
+      }
+    }, [activeId, updateContent]),
+  })
+
+  const handleContentChange = useCallback((value: string) => {
+    updateContent(activeId, value)
+    if (user) {
+      setSyncStatus('saving')
+      syncToRemote(value)
+      setTimeout(() => setSyncStatus('saved'), 600)
+    }
+  }, [activeId, updateContent, user, syncToRemote])
+
   useEffect(() => {
     const close = () => setOpenMenu(null)
     document.addEventListener('click', close)
     return () => document.removeEventListener('click', close)
   }, [])
 
-  // 다크모드 body 클래스
   useEffect(() => {
     document.body.classList.toggle('dark', darkMode)
   }, [darkMode])
 
-  // ── 토글 핸들러 ───────────────────────────────────────────
+  useEffect(() => {
+    const online  = () => setSyncStatus('saved')
+    const offline = () => setSyncStatus('offline')
+    window.addEventListener('online',  online)
+    window.addEventListener('offline', offline)
+    return () => {
+      window.removeEventListener('online',  online)
+      window.removeEventListener('offline', offline)
+    }
+  }, [])
+
+  // 탭 이름 편집 인풋 포커스
+  useEffect(() => {
+    if (editingTabId && tabInputRef.current) {
+      tabInputRef.current.focus()
+      tabInputRef.current.select()
+    }
+  }, [editingTabId])
+
+  // ── 탭 이름 편집 핸들러 ───────────────────────────────────
+  const handleTabDoubleClick = useCallback((tabId: string, currentName: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingTabId(tabId)
+    setEditingName(currentName)
+  }, [])
+
+  const handleTabRenameCommit = useCallback(() => {
+    if (editingTabId) {
+      renameTab(editingTabId, editingName || 'untitled.txt')
+    }
+    setEditingTabId(null)
+    setEditingName('')
+  }, [editingTabId, editingName, renameTab])
+
+  const handleTabRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleTabRenameCommit()
+    if (e.key === 'Escape') {
+      setEditingTabId(null)
+      setEditingName('')
+    }
+  }, [handleTabRenameCommit])
+
+  // ── 토글 ──────────────────────────────────────────────────
   const toggleColumnMode = useCallback(() => {
     setColumnMode(prev => {
       const next = !prev
@@ -87,10 +166,6 @@ export default function App() {
     })
   }, [])
 
-  const toggleDarkMode = useCallback(() => {
-    setDarkMode(prev => !prev)
-  }, [])
-
   // ── 파일 열기 ──────────────────────────────────────────────
   const handleOpen = useCallback(async () => {
     setOpenMenu(null)
@@ -108,12 +183,10 @@ export default function App() {
       if (!result) return
       openFileAsTab(result.name, result.path, result.content, getLanguage(result.name))
     } else {
-      // 웹: 최근 파일은 경로만 있고 다시 읽을 수 없으므로 열기 다이얼로그 유도
       alert(`웹 환경에서는 파일을 다시 선택해야 합니다.\n파일명: ${recent.name}`)
     }
   }, [openFileAsTab])
 
-  // ── 폴더 열기 ──────────────────────────────────────────────
   const handleOpenFolder = useCallback(async () => {
     setOpenMenu(null)
     const result = await openFolder()
@@ -123,31 +196,14 @@ export default function App() {
     setSidebarOpen(true)
   }, [])
 
-  // ── 저장 ───────────────────────────────────────────────────
-  const handleSave = useCallback(async () => {
-    setOpenMenu(null)
-    if (!activeTab) return
-    if (!activeTab.path) {
-      const result = await saveFileAs(activeTab.content, activeTab.name)
-      if (result.success && result.path) {
-        const newName = result.path.split(/[\\/]/).pop() ?? activeTab.name
-        markSaved(activeId, result.path, newName)
-        pushRecent(newName, result.path)
-        setRecentFiles(loadRecent())
-      }
-      return
-    }
-    const result = await saveFile(activeTab.path, activeTab.content)
-    if (result.success) {
-      markSaved(activeId)
-      pushRecent(activeTab.name, activeTab.path)
-      setRecentFiles(loadRecent())
-    }
-  }, [activeTab, activeId, markSaved])
-
+  // ── 로컬 파일로 내보내기 (Electron 전용) ────────────────────
   const handleSaveAs = useCallback(async () => {
     setOpenMenu(null)
     if (!activeTab) return
+    if (!isElectron()) {
+      alert('웹 버전에서는 내용이 Firebase에 자동으로 저장됩니다.\n파일로 내보내려면 Electron 데스크탑 버전을 사용해주세요.')
+      return
+    }
     const result = await saveFileAs(activeTab.content, activeTab.name)
     if (result.success && result.path) {
       const newName = result.path.split(/[\\/]/).pop() ?? activeTab.name
@@ -164,8 +220,8 @@ export default function App() {
     if (tab?.isDirty) {
       if (!window.confirm(`"${tab.name}"에 저장하지 않은 변경사항이 있습니다.\n닫으시겠습니까?`)) return
     }
-    closeTab(tabId)
-  }, [tabs, closeTab])
+    closeTab(tabId, (id) => removeTabDoc(id))
+  }, [tabs, closeTab, removeTabDoc])
 
   // ── 사이드바 파일 클릭 ────────────────────────────────────
   const handleFileClick = useCallback(async (entry: FolderEntry) => {
@@ -183,55 +239,43 @@ export default function App() {
     } catch { alert('파일을 읽을 수 없습니다.') }
   }, [openFileAsTab])
 
-  // ── Electron 네이티브 메뉴 ────────────────────────────────
+  // ── Electron 메뉴 ─────────────────────────────────────────
   useEffect(() => {
     if (!isElectron()) return
     const offs = [
       onMenuEvent('menu:new-file',    openNewTab),
       onMenuEvent('menu:open-file',   handleOpen),
       onMenuEvent('menu:open-folder', handleOpenFolder),
-      onMenuEvent('menu:save',        handleSave),
       onMenuEvent('menu:save-as',     handleSaveAs),
     ]
     return () => offs.forEach(off => off())
-  }, [openNewTab, handleOpen, handleOpenFolder, handleSave, handleSaveAs])
+  }, [openNewTab, handleOpen, handleOpenFolder, handleSaveAs])
 
   // ── Monaco 마운트 ──────────────────────────────────────────
   const handleEditorMount: OnMount = (editor, monaco) => {
     editorRef.current = editor
-
-    // 단축키
     if (!isElectron()) {
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, handleSave)
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS, handleSaveAs)
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyN, openNewTab)
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyO, handleOpen)
+    } else {
+      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS, handleSaveAs)
     }
-
-    // 커서 위치 & 글자 수 업데이트
     const updateCursor = () => {
       const pos      = editor.getPosition()
       const model    = editor.getModel()
       const sel      = editor.getSelection()
       const selected = sel && model ? model.getValueInRange(sel).length : 0
       const total    = model?.getValue().length ?? 0
-      setCursorInfo({
-        line:     pos?.lineNumber ?? 1,
-        col:      pos?.column ?? 1,
-        selected,
-        total,
-      })
+      setCursorInfo({ line: pos?.lineNumber ?? 1, col: pos?.column ?? 1, selected, total })
     }
-
     editor.onDidChangeCursorPosition(updateCursor)
     editor.onDidChangeModelContent(updateCursor)
     editor.onDidChangeCursorSelection(updateCursor)
     updateCursor()
-
     editor.focus()
   }
 
-  // ── 드롭다운 메뉴 정의 ────────────────────────────────────
+  // ── 드롭다운 메뉴 ─────────────────────────────────────────
   const menus = [
     {
       id: 'file', label: '파일',
@@ -239,17 +283,15 @@ export default function App() {
         { label: '새 파일',              shortcut: 'Ctrl+N',       action: () => { openNewTab(); setOpenMenu(null) } },
         { label: '파일 열기...',          shortcut: 'Ctrl+O',       action: handleOpen },
         { label: '폴더 열기...',          shortcut: '',             action: handleOpenFolder },
-        { type: 'sep' },
-        { label: '저장',                  shortcut: 'Ctrl+S',       action: handleSave },
-        { label: '다른 이름으로 저장...', shortcut: 'Ctrl+Shift+S', action: handleSaveAs },
+        ...(isElectron() ? [
+          { type: 'sep' },
+          { label: '로컬 파일로 내보내기...', shortcut: 'Ctrl+Shift+S', action: handleSaveAs },
+        ] : []),
         ...(recentFiles.length > 0 ? [
           { type: 'sep' },
           { label: '최근 파일', shortcut: '', action: () => {}, disabled: true },
           ...recentFiles.slice(0, 5).map(r => ({
-            label: r.name,
-            shortcut: '',
-            action: () => handleOpenRecent(r),
-            isRecent: true,
+            label: r.name, shortcut: '', action: () => handleOpenRecent(r), isRecent: true,
           })),
         ] : []),
       ],
@@ -273,16 +315,26 @@ export default function App() {
       items: [
         { label: `파일 탐색기 ${sidebarOpen ? '숨기기 ✓' : '보이기'}`, shortcut: '', action: () => { setSidebarOpen(p => !p); setOpenMenu(null) } },
         { type: 'sep' },
-        { label: `테마: ${darkMode ? '🌙 다크' : '☀️ 라이트'}`, shortcut: '', action: () => { toggleDarkMode(); setOpenMenu(null) } },
+        { label: `테마: ${darkMode ? '🌙 다크' : '☀️ 라이트'}`, shortcut: '', action: () => { setDarkMode(p => !p); setOpenMenu(null) } },
         { type: 'sep' },
-        { label: `열 블록 모드 ${columnMode ? '끄기 ✓' : '켜기'}`, shortcut: '', action: () => { toggleColumnMode(); setOpenMenu(null) } },
-        { label: `자동완성 ${autoComplete ? '끄기 ✓' : '켜기'}`,   shortcut: '', action: () => { toggleAutoComplete(); setOpenMenu(null) } },
+        { label: `열 블록 모드 ${columnMode ? '끄기 ✓' : '켜기'}`,  shortcut: '', action: () => { toggleColumnMode(); setOpenMenu(null) } },
+        { label: `자동완성 ${autoComplete ? '끄기 ✓' : '켜기'}`,    shortcut: '', action: () => { toggleAutoComplete(); setOpenMenu(null) } },
         { type: 'sep' },
         { label: '줄 바꿈 토글', shortcut: 'Alt+Z', action: () => {
           const cur = editorRef.current?.getOption(130 as Monaco.editor.EditorOption)
           editorRef.current?.updateOptions({ wordWrap: cur === 'off' ? 'on' : 'off' })
           setOpenMenu(null)
         }},
+      ],
+    },
+    {
+      id: 'account', label: user ? '계정' : '로그인',
+      items: user ? [
+        { label: user.displayName ?? user.email ?? '내 계정', shortcut: '', action: () => {}, disabled: true },
+        { type: 'sep' },
+        { label: '로그아웃', shortcut: '', action: () => { signOut(); setOpenMenu(null) } },
+      ] : [
+        { label: 'Google로 로그인', shortcut: '', action: () => { signIn(); setOpenMenu(null) } },
       ],
     },
   ]
@@ -310,11 +362,13 @@ export default function App() {
       </div>
     ))
 
-  // ── 렌더 ──────────────────────────────────────────────────
+  if (loading)        return <div className="app-loading">로딩 중...</div>
+  if (!user)          return <Login onSignIn={signIn} />
+  if (!sessionLoaded) return <div className="app-loading">이전 작업 불러오는 중...</div>
+
   return (
     <div className={`app ${darkMode ? 'app--dark' : ''}`}>
 
-      {/* 메뉴바 */}
       {!isElectron() && (
         <header className="menubar">
           <span className="menubar-brand">Koditor</span>
@@ -325,6 +379,10 @@ export default function App() {
                   className={`dropdown__trigger ${openMenu === menu.id ? 'dropdown__trigger--open' : ''}`}
                   onClick={() => setOpenMenu(openMenu === menu.id ? null : menu.id)}
                 >
+                  {menu.id === 'account' && user?.photoURL
+                    ? <img src={user.photoURL} alt="" className="menubar-avatar" />
+                    : null
+                  }
                   {menu.label}
                 </button>
                 {openMenu === menu.id && (
@@ -349,12 +407,9 @@ export default function App() {
               </div>
             ))}
           </nav>
-
-          {/* 메뉴바 우측 토글 배지 */}
           <div className="menubar-badges">
-            {columnMode   && <span className="badge badge--blue">열 블록</span>}
+            {columnMode    && <span className="badge badge--blue">열 블록</span>}
             {!autoComplete && <span className="badge badge--gray">자동완성 OFF</span>}
-            {darkMode      && <span className="badge badge--dark">🌙</span>}
           </div>
         </header>
       )}
@@ -367,10 +422,30 @@ export default function App() {
               key={tab.id}
               className={`tab ${tab.id === activeId ? 'tab--active' : ''}`}
               onClick={() => setActiveId(tab.id)}
-              title={tab.path || tab.name}
+              title="더블클릭으로 이름 변경"
             >
               <span className={`tab__dot tab__dot--${tab.language}`} />
-              <span className="tab__name">{tab.name}</span>
+
+              {/* 탭 이름 — 더블클릭 시 인풋으로 전환 */}
+              {editingTabId === tab.id ? (
+                <input
+                  ref={tabInputRef}
+                  className="tab__name-input"
+                  value={editingName}
+                  onChange={e => setEditingName(e.target.value)}
+                  onBlur={handleTabRenameCommit}
+                  onKeyDown={handleTabRenameKeyDown}
+                  onClick={e => e.stopPropagation()}
+                />
+              ) : (
+                <span
+                  className="tab__name"
+                  onDoubleClick={e => handleTabDoubleClick(tab.id, tab.name, e)}
+                >
+                  {tab.name}
+                </span>
+              )}
+
               {tab.isDirty && <span className="tab__unsaved" />}
               <button className="tab__close" onClick={e => handleCloseTab(tab.id, e)}>×</button>
             </div>
@@ -379,7 +454,6 @@ export default function App() {
         <button className="tabbar__add" onClick={openNewTab} title="새 탭 (Ctrl+N)">+</button>
       </div>
 
-      {/* 워크스페이스 */}
       <div className="workspace">
         {sidebarOpen && (
           <aside className="sidebar">
@@ -415,7 +489,6 @@ export default function App() {
               scrollBeyondLastLine: false, smoothScrolling: true,
               scrollbar: { verticalScrollbarSize: 8, horizontalScrollbarSize: 8 },
               tabSize: 2, insertSpaces: true, detectIndentation: true,
-              // 자동완성 토글
               quickSuggestions: autoComplete ? { other: true, comments: false, strings: false } : false,
               suggestOnTriggerCharacters: autoComplete,
               parameterHints: { enabled: autoComplete },
@@ -431,18 +504,22 @@ export default function App() {
               wordWrap: 'off', accessibilitySupport: 'off',
             }}
             onMount={handleEditorMount}
-            onChange={value => updateContent(activeId, value ?? '')}
+            onChange={value => handleContentChange(value ?? '')}
           />
         </div>
       </div>
 
-      {/* 상태바 */}
       <footer className="statusbar">
         <div className="statusbar__left">
           <span className="status-pill">{activeTab?.language ?? 'plaintext'}</span>
           <span className="status-sep">│</span>
-          <span className={`status-pill ${activeTab?.isDirty ? 'status-pill--dirty' : ''}`}>
-            {activeTab?.isDirty ? '● 수정됨' : '저장됨'}
+          <span className={`status-pill ${
+            syncStatus === 'offline' ? 'status-pill--dirty' :
+            syncStatus === 'saving'  ? 'status-pill--col'   : ''
+          }`}>
+            {syncStatus === 'offline' ? '● 오프라인 (로컬 저장 중)' :
+             syncStatus === 'saving'  ? '↑ 동기화 중...' :
+             user ? '✓ 동기화됨' : '저장됨'}
           </span>
           {activeTab?.path && <>
             <span className="status-sep">│</span>
@@ -450,20 +527,15 @@ export default function App() {
           </>}
         </div>
         <div className="statusbar__right">
-          {/* 선택 글자 수 */}
           {cursorInfo.selected > 0 && <>
             <span className="status-pill">선택 {cursorInfo.selected}자</span>
             <span className="status-sep">│</span>
           </>}
-          {/* 전체 글자 수 */}
           <span className="status-pill">{cursorInfo.total.toLocaleString()}자</span>
           <span className="status-sep">│</span>
-          {/* 커서 위치 */}
-          <span className="status-pill">
-            {cursorInfo.line}줄 {cursorInfo.col}열
-          </span>
+          <span className="status-pill">{cursorInfo.line}줄 {cursorInfo.col}열</span>
           <span className="status-sep">│</span>
-          {columnMode && <><span className="status-pill status-pill--col">열 블록</span><span className="status-sep">│</span></>}
+          {columnMode    && <><span className="status-pill status-pill--col">열 블록</span><span className="status-sep">│</span></>}
           {!autoComplete && <><span className="status-pill status-pill--off">자동완성 OFF</span><span className="status-sep">│</span></>}
           <span className="status-pill">UTF-8</span>
           <span className="status-sep">│</span>
