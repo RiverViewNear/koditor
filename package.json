@@ -1,6 +1,6 @@
 {
   "name": "koditor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Koditor - Web & Desktop Code Editor",
   "main": "electron/main.js",
   "private": true,
