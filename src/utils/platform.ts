@@ -17,7 +17,7 @@ declare global {
   interface Window {
     electronAPI?: {
       openFile: () => Promise<{ name: string; path: string; content: string } | null>
-      openFolder: () => Promise<{ name: string; entries: FolderEntry[] } | null>
+      openFolder: () => Promise<{ name: string; path: string; entries: FolderEntry[] } | null>
       saveFile: (path: string, content: string) => Promise<{ success: boolean; error?: string }>
       saveAs: (defaultName: string) => Promise<string | null>
       readFile: (path: string) => Promise<string>
@@ -25,6 +25,7 @@ declare global {
       offMenuEvent: (channel: string, cb: () => void) => void
       openAuthBrowser: (authUrl: string) => Promise<boolean>
       startAuthServer: (port: number) => Promise<{ code: string; state: string }>
+      openFolderByPath: (folderPath: string) => Promise<{ name: string; path: string; entries: FolderEntry[] } | null>
       platform: 'darwin' | 'win32' | 'linux'
     }
   }
@@ -54,6 +55,7 @@ export interface FolderEntry {
 
 export interface OpenedFolder {
   name: string
+  path: string   // 폴더 전체 경로 (재시작 시 복원용)
   entries: FolderEntry[]
 }
 
@@ -85,6 +87,26 @@ export async function openFile(): Promise<OpenedFile | null> {
   }
 }
 
+// ── 경로로 폴더 다시 열기 (Electron 전용, 앱 재시작 시 복원용) ──
+export async function openFolderByPath(folderPath: string): Promise<OpenedFolder | null> {
+  if (!isElectron()) return null
+  try {
+    const result = await window.electronAPI!.openFolderByPath(folderPath)
+    if (!result) return null
+    const injectRead = (entries: FolderEntry[]): FolderEntry[] =>
+      entries.map(e => ({
+        ...e,
+        read: e.kind === 'file'
+          ? () => window.electronAPI!.readFile(e.path)
+          : undefined,
+        children: e.children ? injectRead(e.children) : undefined,
+      }))
+    return { name: result.name, path: result.path ?? '', entries: injectRead(result.entries) }
+  } catch {
+    return null
+  }
+}
+
 // ── 폴더 열기 ────────────────────────────────────────────
 
 export async function openFolder(): Promise<OpenedFolder | null> {
@@ -100,14 +122,14 @@ export async function openFolder(): Promise<OpenedFolder | null> {
           : undefined,
         children: e.children ? injectRead(e.children) : undefined,
       }))
-    return { name: result.name, entries: injectRead(result.entries) }
+    return { name: result.name, path: result.path ?? '', entries: injectRead(result.entries) }
   }
 
   // Web: showDirectoryPicker (Chrome/Edge 86+)
   try {
     const dirHandle = await (window as any).showDirectoryPicker({ mode: 'read' })
     const entries = await readDirHandle(dirHandle, dirHandle.name)
-    return { name: dirHandle.name, entries }
+    return { name: dirHandle.name, path: dirHandle.name, entries }
   } catch {
     return null
   }

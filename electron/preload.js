@@ -10,6 +10,7 @@ const VALID_CHANNELS = [
 contextBridge.exposeInMainWorld('electronAPI', {
   openFile:   () => ipcRenderer.invoke('dialog:open-file'),
   openFolder: () => ipcRenderer.invoke('dialog:open-folder'),
+  openFolderByPath: (folderPath) => ipcRenderer.invoke('fs:open-folder-by-path', folderPath),
   readFile:   (filePath) => ipcRenderer.invoke('fs:read-file', filePath),
   saveFile:   (filePath, content) => ipcRenderer.invoke('fs:save-file', filePath, content),
   saveAs:     (defaultName) => ipcRenderer.invoke('dialog:save-as', defaultName),

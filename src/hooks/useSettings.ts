@@ -17,6 +17,7 @@ export interface Settings {
   darkMode: boolean
   columnMode: boolean
   sidebarOpen: boolean
+  lastFolderPath: string | null
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS: Settings = {
   darkMode: false,
   columnMode: false,
   sidebarOpen: true,
+  lastFolderPath: null,
 }
 
 export function useSettings(user: User | null) {

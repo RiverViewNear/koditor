@@ -105,7 +105,6 @@ export function useEditorStore() {
       if (prev.length === 1) {
         const blank = makeBlankTab()
         setActiveId(blank.id)
-        onRemoved?.(tabId)
         return [blank]
       }
       const idx = prev.findIndex(t => t.id === tabId)
@@ -113,9 +112,10 @@ export function useEditorStore() {
       if (activeId === tabId) {
         setActiveId(next[Math.min(idx, next.length - 1)].id)
       }
-      onRemoved?.(tabId)
       return next
     })
+    // setTabs 밖에서 호출 — 비동기 removeTabDoc이 React 상태와 충돌 방지
+    setTimeout(() => onRemoved?.(tabId), 0)
   }, [activeId])
 
   return {

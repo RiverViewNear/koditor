@@ -85,12 +85,14 @@ function createWindow() {
 
   // 창 닫히기 전 크기/위치 저장
   mainWindow.on('close', () => {
-    // 최대화/최소화 상태가 아닐 때만 저장
     if (!mainWindow.isMaximized() && !mainWindow.isMinimized()) {
       store.set('windowBounds', mainWindow.getBounds())
     }
-    // 최대화 상태도 저장
     store.set('windowMaximized', mainWindow.isMaximized())
+  })
+
+  mainWindow.on('closed', () => {
+    mainWindow = null
   })
 
 
@@ -276,7 +278,17 @@ ipcMain.handle('dialog:open-folder', async () => {
   const result = await dialog.showOpenDialog({ properties: ['openDirectory'] })
   if (result.canceled || result.filePaths.length === 0) return null
   const folderPath = result.filePaths[0]
-  return { name: path.basename(folderPath), entries: readDirSync(folderPath) }
+  return { name: path.basename(folderPath), path: folderPath, entries: readDirSync(folderPath) }
+})
+
+// 경로로 직접 폴더 열기 (앱 재시작 시 마지막 폴더 복원용)
+ipcMain.handle('fs:open-folder-by-path', async (_event, folderPath) => {
+  try {
+    if (!fs.existsSync(folderPath)) return null
+    return { name: path.basename(folderPath), path: folderPath, entries: readDirSync(folderPath) }
+  } catch {
+    return null
+  }
 })
 
 function readDirSync(dirPath, supportedExts = ['txt','js','jsx','ts','tsx','html','htm','css','java']) {
@@ -312,7 +324,14 @@ app.whenReady().then(() => {
   })
 })
 
+// 앱 종료 전 로컬 서버 반드시 종료
+app.on('before-quit', () => {
+  if (localServer) {
+    localServer.close()
+    localServer = null
+  }
+})
+
 app.on('window-all-closed', () => {
-  if (localServer) localServer.close()
   if (process.platform !== 'darwin') app.quit()
 })

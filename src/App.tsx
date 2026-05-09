@@ -12,7 +12,7 @@ import { Toast } from './components/Toast'
 import {
   openFile, saveFileAs,
   getLanguage, onMenuEvent, isElectron,
-  openFolder, type FolderEntry,
+  openFolder, openFolderByPath, type FolderEntry,
 } from './utils/platform'
 import './styles/app.css'
 
@@ -98,6 +98,24 @@ export default function App() {
   useEffect(() => {
     document.body.classList.toggle('dark', darkMode)
   }, [darkMode])
+
+  // ── 앱 시작 시 마지막 폴더 복원 (Electron 전용) ─────────────
+  useEffect(() => {
+    if (!isElectron()) return
+    if (!settingsLoaded) return
+    const lastPath = settings.lastFolderPath
+    if (!lastPath) return
+
+    openFolderByPath(lastPath).then(result => {
+      if (result) {
+        setFolderName(result.name)
+        setFolderTree(result.entries)
+      } else {
+        // 경로가 없어졌으면 저장된 경로 초기화
+        updateSetting('lastFolderPath', null)
+      }
+    })
+  }, [settingsLoaded]) // 설정 로드 완료 후 1회만 실행
 
   // ── Electron 메뉴 상태 동기화 ───────────────────────────────
   useEffect(() => {
@@ -220,10 +238,28 @@ export default function App() {
       setFolderName(result.name)
       setFolderTree(result.entries)
       updateSetting('sidebarOpen', true)
+      // 마지막 폴더 경로 저장 (Electron에서 재시작 시 복원용)
+      // 마지막 폴더 경로 저장 (Electron만 해당)
+      if (isElectron() && result.path) {
+        updateSetting('lastFolderPath', result.path)
+      }
     } catch {
       toast.error('폴더를 열 수 없습니다.')
     }
   }, [updateSetting])
+
+  // ── 웹 전용: 현재 탭 내용 파일로 내려받기 ───────────────────
+  const handleDownload = useCallback(() => {
+    setOpenMenu(null)
+    if (!activeTab) return
+    const blob = new Blob([activeTab.content], { type: 'text/plain;charset=utf-8' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = activeTab.name
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [activeTab])
 
   // ── 로컬 파일로 내보내기 (Electron 전용) ──────────────────
   const handleSaveAs = useCallback(async () => {
@@ -325,10 +361,11 @@ export default function App() {
         { label: '새 파일',     shortcut: 'Ctrl+N', action: () => { openNewTab(); setOpenMenu(null) } },
         { label: '파일 열기...', shortcut: 'Ctrl+O', action: handleOpen },
         { label: '폴더 열기...', shortcut: '',       action: handleOpenFolder },
-        ...(isElectron() ? [
-          { type: 'sep' },
-          { label: '로컬 파일로 내보내기...', shortcut: 'Ctrl+Shift+S', action: handleSaveAs },
-        ] : []),
+        { type: 'sep' },
+        ...(isElectron()
+          ? [{ label: '로컬 파일로 내보내기...', shortcut: 'Ctrl+Shift+S', action: handleSaveAs }]
+          : [{ label: '파일로 내려받기',         shortcut: '',             action: handleDownload }]
+        ),
         ...(recentFiles.length > 0 ? [
           { type: 'sep' },
           { label: '최근 파일', shortcut: '', action: () => {}, disabled: true },
