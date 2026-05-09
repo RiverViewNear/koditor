@@ -1,7 +1,11 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron')
-const path = require('path')
-const fs   = require('fs')
-const http = require('http')
+const path  = require('path')
+const fs    = require('fs')
+const http  = require('http')
+const Store = require('electron-store')
+
+// 창 크기/위치 저장소
+const store = new Store()
 
 const isDev   = process.env.NODE_ENV === 'development' || !app.isPackaged
 const DEV_URL = 'http://localhost:1420'
@@ -47,10 +51,15 @@ function startLocalServer(distPath) {
 }
 
 function createWindow() {
+  // 마지막 창 크기/위치 복원 (없으면 기본값)
+  const bounds = store.get('windowBounds', { width: 1280, height: 800 })
+
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 800,
+    width:     bounds.width,
+    height:    bounds.height,
+    x:         bounds.x,
+    y:         bounds.y,
+    minWidth:  800,
     minHeight: 500,
     title: 'Koditor',
     show: false,
@@ -68,6 +77,20 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
     // mainWindow.webContents.openDevTools()
+    // 최대화 상태 복원
+    if (store.get('windowMaximized', false)) {
+      mainWindow.maximize()
+    }
+  })
+
+  // 창 닫히기 전 크기/위치 저장
+  mainWindow.on('close', () => {
+    // 최대화/최소화 상태가 아닐 때만 저장
+    if (!mainWindow.isMaximized() && !mainWindow.isMinimized()) {
+      store.set('windowBounds', mainWindow.getBounds())
+    }
+    // 최대화 상태도 저장
+    store.set('windowMaximized', mainWindow.isMaximized())
   })
 
 
