@@ -24,7 +24,8 @@
 | 상태바 글자 수 표시 | 전체 글자 수 / 선택 글자 수 |
 | 상태바 동기화 상태 표시 | 동기화 중 / 동기화됨 / 오프라인 |
 | 에러/알림 토스트 | 오프라인 전환, 온라인 복구, 오류 시 알림 |
-| **Google 로그인** | Firebase 인증 |
+| 데스크탑 메뉴 토글 상태 표시 | 보기 메뉴에서 현재 ON/OFF 상태 ✓로 표시 |
+| **Google 로그인** | Firebase 인증 (웹: 팝업 / 데스크탑: 팝업) |
 | **실시간 동기화** | Firebase Realtime Database, 300ms 자동 저장 |
 | **세션 복원** | 앱 재시작 시 탭 목록 + 내용 자동 복원 |
 | **설정 동기화** | 테마/자동완성 등 설정값 기기 간 동기화 |
@@ -63,7 +64,7 @@
 | 파일 | 새 파일, 파일 열기, 폴더 열기, 로컬 파일로 내보내기 (데스크탑 전용), 최근 파일 |
 | 편집 | 실행 취소/다시 실행, 잘라내기/복사/붙여넣기, 찾기/바꾸기 |
 | 보기 | 파일 탐색기 토글, 테마 전환, 열 블록 모드, 자동완성 토글, 줄 바꿈 토글 |
-| 계정 | 로그인 정보 확인, 로그아웃 |
+| 계정 | 로그인한 사용자 이름 표시, 로그아웃 |
 
 > **저장 메뉴가 없는 이유:** 내용은 타이핑 후 300ms마다 Firebase에 자동 저장됩니다.  
 > 별도 저장 버튼이 필요 없습니다. 로컬 파일로 내보내고 싶을 때만 데스크탑 전용 메뉴를 사용하세요.
@@ -106,6 +107,52 @@ npm run dev:electron
 
 ---
 
+## Firebase 설정 (최초 1회)
+
+### 1. Firebase 프로젝트 생성
+
+```
+https://console.firebase.google.com
+→ 프로젝트 추가
+→ Authentication → Google 로그인 활성화
+→ Realtime Database 생성 (위치: asia-southeast1 권장)
+```
+
+### 2. 승인된 도메인 설정 (필수)
+
+```
+Firebase 콘솔 → Authentication → Settings → 승인된 도메인
+→ 아래 도메인이 모두 있는지 확인:
+  - localhost
+  - 127.0.0.1        ← 데스크탑 앱 로그인용 (반드시 추가)
+  - your-project.web.app
+  - your-project.firebaseapp.com
+```
+
+> **127.0.0.1이 없으면 데스크탑 앱에서 로그인이 안 됩니다.**  
+> 데스크탑 앱은 내부 localhost 서버(`http://127.0.0.1:9123`)를 통해 Firebase 인증을 처리합니다.
+
+### 3. 보안 규칙 설정
+
+```
+Firebase 콘솔 → Realtime Database → 규칙 탭
+```
+
+```json
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    }
+  }
+}
+```
+
+---
+
 ## 웹 배포 (Firebase Hosting + PWA)
 
 ### 최초 1회 설정
@@ -123,7 +170,7 @@ firebase login
 ```bash
 npm run deploy
 # 내부적으로 npm run build:web && firebase deploy 실행
-# → https://ko-ditor.web.app
+# → https://your-project.web.app
 ```
 
 ### 재배포 (코드 수정 후)
@@ -173,7 +220,6 @@ npm run build:electron
 > # Y 입력 후 엔터
 > npm run build:electron
 > ```
-> `node`는 되는데 `npm`이 안 되는 이유는 npm이 `.ps1` 스크립트로 실행되기 때문이에요.
 
 > **오류 2 — winCodeSign 심볼릭 링크 오류**
 >
@@ -228,7 +274,7 @@ release/
 koditor/
 │
 ├── electron/                    ← Electron (데스크탑 래퍼)
-│   ├── main.js                  ← 메인 프로세스: 창/메뉴/IPC/파일시스템
+│   ├── main.js                  ← 메인 프로세스: 창/메뉴/IPC/파일시스템/로컬서버
 │   └── preload.js               ← 보안 브릿지: main ↔ React
 │
 ├── public/                      ← 정적 파일
@@ -276,6 +322,34 @@ koditor/
 ├── .gitignore
 ├── LICENSE
 └── README.md
+```
+
+---
+
+## 데스크탑 로그인 동작 방식
+
+데스크탑 앱은 `file://` 프로토콜로 실행되므로 Firebase 팝업 인증이 직접 동작하지 않아요.  
+이를 해결하기 위해 내부 로컬 HTTP 서버(`http://127.0.0.1:9123`)를 통해 앱을 서빙하고,  
+Firebase 팝업 인증이 `127.0.0.1` 도메인에서 동작하도록 처리해요.
+
+```
+데스크탑 앱 실행
+  → main.js가 dist/ 폴더를 http://127.0.0.1:9123 으로 서빙
+  → 브라우저 창에 http://127.0.0.1:9123 로드
+
+로그인 버튼 클릭
+  → Firebase 팝업 창 열림
+  → Google 계정 선택 및 인증
+  → Firebase Auth 완료 → 에디터 화면 진입
+
+이후 실행 (로그인 이력 있을 때)
+  → Firebase Auth 캐시로 자동 로그인
+  → 팝업 없이 바로 에디터 화면
+
+오프라인 실행
+  → 로컬 서버에서 앱 로드 (인터넷 불필요)
+  → Firebase Auth 캐시로 로그인 유지
+  → 오프라인 모드로 에디터 사용 가능
 ```
 
 ---
@@ -333,26 +407,6 @@ saveFileAs()  → Electron: 네이티브 저장 다이얼로그 + fs.writeFileSy
 ```
 
 Electron은 Chromium을 직접 내장하기 때문에 Windows/macOS/Linux 모두 **동일한 렌더링**이 보장됩니다.
-
----
-
-## Firebase 보안 규칙
-
-Firebase 콘솔 → Realtime Database → 규칙 탭에 아래 규칙을 적용하세요.  
-본인 데이터만 읽고 쓸 수 있도록 제한합니다.
-
-```json
-{
-  "rules": {
-    "users": {
-      "$uid": {
-        ".read": "$uid === auth.uid",
-        ".write": "$uid === auth.uid"
-      }
-    }
-  }
-}
-```
 
 ---
 
