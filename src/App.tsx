@@ -122,10 +122,6 @@ export default function App() {
   const [openMenu,      setOpenMenu]      = useState<string | null>(null)
 
   // 메뉴 닫을 때 에디터 포커스 복원
-  const closeMenu = useCallback(() => {
-    setOpenMenu(null)
-    setTimeout(() => editorRef.current?.focus(), 0)
-  }, [])
   const [folderName,    setFolderName]    = useState<string | null>(null)
   const [folderTree,    setFolderTree]    = useState<FolderEntry[]>([])
   const [expandedDirs,  setExpandedDirs]  = useState<Set<string>>(new Set())
@@ -270,7 +266,7 @@ export default function App() {
 
   // ── 파일 열기 ──────────────────────────────────────────────
   const handleOpen = useCallback(async () => {
-    closeMenu()
+    setOpenMenu(null)
     try {
       const result = await openFile()
       if (!result) return
@@ -281,7 +277,7 @@ export default function App() {
   }, [openFileAsTab])
 
   const handleOpenRecent = useCallback(async (recent: RecentFile) => {
-    closeMenu()
+    setOpenMenu(null)
     if (isElectron()) {
       const result = await window.electronAPI!.openFile()
       if (!result) return
@@ -292,7 +288,7 @@ export default function App() {
   }, [openFileAsTab])
 
   const handleOpenFolder = useCallback(async () => {
-    closeMenu()
+    setOpenMenu(null)
     try {
       const result = await openFolder()
       if (!result) return
@@ -305,7 +301,7 @@ export default function App() {
 
   // ── 저장/내보내기 ─────────────────────────────────────────
   const handleSaveAs = useCallback(async () => {
-    closeMenu()
+    setOpenMenu(null)
     if (!activeTab) return
     try {
       const result = await saveFileAs(activeTab.content, activeTab.name)
@@ -319,7 +315,7 @@ export default function App() {
   }, [activeTab, activeId, markSaved])
 
   const handleDownload = useCallback(() => {
-    closeMenu()
+    setOpenMenu(null)
     if (!activeTab) return
     const blob = new Blob([activeTab.content], { type: 'text/plain;charset=utf-8' })
     const url  = URL.createObjectURL(blob)
@@ -411,16 +407,6 @@ export default function App() {
       editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS, handleSaveAs)
     }
 
-    // Monaco iframe의 DOM에 직접 keydown 등록 — Ctrl+N/O 브라우저 기본동작 차단
-    const editorDom = editor.getDomNode()
-    if (editorDom && !isElectron()) {
-      editorDom.addEventListener('keydown', (e: KeyboardEvent) => {
-        const mod = e.ctrlKey || e.metaKey
-        if (!mod) return
-        if (e.key === 'n' || e.key === 'N') { e.preventDefault(); e.stopPropagation(); openNewTab() }
-        if (e.key === 'o' || e.key === 'O') { e.preventDefault(); e.stopPropagation(); handleOpen() }
-      }, { capture: true })
-    }
     const updateCursor = () => {
       const pos = editor.getPosition(); const model = editor.getModel(); const sel = editor.getSelection()
       const selected = sel && model ? model.getValueInRange(sel).length : 0
@@ -438,7 +424,7 @@ export default function App() {
     {
       id: 'file', label: '파일',
       items: [
-        { label: '새 파일',     shortcut: 'Ctrl+N', action: () => { openNewTab(); closeMenu() } },
+        { label: '새 파일',     shortcut: '',       action: () => { openNewTab(); setOpenMenu(null) } },
         { label: '파일 열기...', shortcut: 'Ctrl+O', action: handleOpen },
         { label: '폴더 열기...', shortcut: '',       action: handleOpenFolder },
         { type: 'sep' },
@@ -456,26 +442,26 @@ export default function App() {
     {
       id: 'edit', label: '편집',
       items: [
-        { label: '실행 취소', shortcut: 'Ctrl+Z', action: () => { editorRef.current?.trigger('', 'undo', null); closeMenu() } },
-        { label: '다시 실행', shortcut: 'Ctrl+Y', action: () => { editorRef.current?.trigger('', 'redo', null); closeMenu() } },
+        { label: '실행 취소', shortcut: 'Ctrl+Z', action: () => { editorRef.current?.trigger('', 'undo', null); setOpenMenu(null) } },
+        { label: '다시 실행', shortcut: 'Ctrl+Y', action: () => { editorRef.current?.trigger('', 'redo', null); setOpenMenu(null) } },
         { type: 'sep' },
-        { label: '잘라내기', shortcut: 'Ctrl+X', action: () => { editorRef.current?.trigger('', 'editor.action.clipboardCutAction', null); closeMenu() } },
-        { label: '복사',     shortcut: 'Ctrl+C', action: () => { editorRef.current?.trigger('', 'editor.action.clipboardCopyAction', null); closeMenu() } },
-        { label: '붙여넣기', shortcut: 'Ctrl+V', action: () => { editorRef.current?.trigger('', 'editor.action.clipboardPasteAction', null); closeMenu() } },
+        { label: '잘라내기', shortcut: 'Ctrl+X', action: () => { editorRef.current?.trigger('', 'editor.action.clipboardCutAction', null); setOpenMenu(null) } },
+        { label: '복사',     shortcut: 'Ctrl+C', action: () => { editorRef.current?.trigger('', 'editor.action.clipboardCopyAction', null); setOpenMenu(null) } },
+        { label: '붙여넣기', shortcut: 'Ctrl+V', action: () => { editorRef.current?.trigger('', 'editor.action.clipboardPasteAction', null); setOpenMenu(null) } },
         { type: 'sep' },
-        { label: '찾기',   shortcut: 'Ctrl+F', action: () => { editorRef.current?.trigger('', 'actions.find', null); closeMenu() } },
-        { label: '바꾸기', shortcut: 'Ctrl+H', action: () => { editorRef.current?.trigger('', 'editor.action.startFindReplaceAction', null); closeMenu() } },
+        { label: '찾기',   shortcut: 'Ctrl+F', action: () => { editorRef.current?.trigger('', 'actions.find', null); setOpenMenu(null) } },
+        { label: '바꾸기', shortcut: 'Ctrl+H', action: () => { editorRef.current?.trigger('', 'editor.action.startFindReplaceAction', null); setOpenMenu(null) } },
       ],
     },
     {
       id: 'view', label: '보기',
       items: [
-        { label: `파일 탐색기 ${sidebarOpen ? '숨기기 ✓' : '보이기'}`, shortcut: '', action: () => { updateSetting('sidebarOpen', !sidebarOpen); closeMenu() } },
+        { label: `파일 탐색기 ${sidebarOpen ? '숨기기 ✓' : '보이기'}`, shortcut: '', action: () => { updateSetting('sidebarOpen', !sidebarOpen); setOpenMenu(null) } },
         { type: 'sep' },
-        { label: `테마: ${darkMode ? '🌙 다크' : '☀️ 라이트'}`, shortcut: '', action: () => { updateSetting('darkMode', !darkMode); closeMenu() } },
+        { label: `테마: ${darkMode ? '🌙 다크' : '☀️ 라이트'}`, shortcut: '', action: () => { updateSetting('darkMode', !darkMode); setOpenMenu(null) } },
         { type: 'sep' },
-        { label: `열 블록 모드 ${columnMode ? '끄기 ✓' : '켜기'}`, shortcut: '', action: () => { toggleColumnMode(); closeMenu() } },
-        { label: `자동완성 ${autoComplete ? '끄기 ✓' : '켜기'}`,   shortcut: '', action: () => { toggleAutoComplete(); closeMenu() } },
+        { label: `열 블록 모드 ${columnMode ? '끄기 ✓' : '켜기'}`, shortcut: '', action: () => { toggleColumnMode(); setOpenMenu(null) } },
+        { label: `자동완성 ${autoComplete ? '끄기 ✓' : '켜기'}`,   shortcut: '', action: () => { toggleAutoComplete(); setOpenMenu(null) } },
         { type: 'sep' },
         { label: `폰트 크기 확대 (${fontSize}px)`, shortcut: 'Ctrl+=', action: () => changeFontSize(+2) },
         { label: '폰트 크기 축소',                  shortcut: 'Ctrl+-', action: () => changeFontSize(-2) },
@@ -484,7 +470,7 @@ export default function App() {
         { label: '줄 바꿈 토글', shortcut: 'Alt+Z', action: () => {
           const cur = editorRef.current?.getOption(130 as Monaco.editor.EditorOption)
           editorRef.current?.updateOptions({ wordWrap: cur === 'off' ? 'on' : 'off' })
-          closeMenu()
+          setOpenMenu(null)
         }},
       ],
     },
@@ -493,9 +479,9 @@ export default function App() {
       items: user ? [
         { label: user.displayName ?? user.email ?? '내 계정', shortcut: '', action: () => {}, disabled: true },
         { type: 'sep' },
-        { label: '로그아웃', shortcut: '', action: () => { signOut(); closeMenu() } },
+        { label: '로그아웃', shortcut: '', action: () => { signOut(); setOpenMenu(null) } },
       ] : [
-        { label: 'Google로 로그인', shortcut: '', action: () => { signIn(); closeMenu() } },
+        { label: 'Google로 로그인', shortcut: '', action: () => { signIn(); setOpenMenu(null) } },
       ],
     },
   ]
