@@ -32,7 +32,11 @@ function startLocalServer(distPath) {
 
       try {
         const data = fs.readFileSync(filePath)
-        res.writeHead(200, { 'Content-Type': contentType })
+        res.writeHead(200, {
+          'Content-Type': contentType,
+          'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+          'Cross-Origin-Embedder-Policy': 'unsafe-none',
+        })
         res.end(data)
       } catch {
         res.writeHead(404)
@@ -61,6 +65,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      partition: 'persist:main',
     },
   })
 
@@ -69,32 +74,22 @@ function createWindow() {
     mainWindow.webContents.openDevTools()
   })
 
-  // COOP 헤더 설정 — Google 로그인 팝업이 닫히지 않는 문제 방지
-  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Cross-Origin-Opener-Policy': ['same-origin-allow-popups'],
-        'Cross-Origin-Embedder-Policy': ['unsafe-none'],
-      },
-    })
-  })
 
-  // Google 로그인 팝업 — 메뉴 숨김 처리
+
+  // Google 로그인 팝업
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.includes('accounts.google.com') || url.includes('firebaseapp.com')) {
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
           width: 500,
-          height: 650,
-          modal: true,
-          parent: mainWindow,
+          height: 700,
           autoHideMenuBar: true,
           menuBarVisible: false,
           webPreferences: {
             contextIsolation: true,
             nodeIntegration: false,
+            partition: 'persist:main',
           },
         },
       }
@@ -103,12 +98,22 @@ function createWindow() {
     return { action: 'deny' }
   })
 
+  // 팝업 창에도 DevTools 열기 (디버깅용)
+  app.on('browser-window-created', (_, window) => {
+    if (window !== mainWindow) {
+      window.webContents.openDevTools()
+    }
+  })
+
   if (isDev) {
     mainWindow.loadURL(DEV_URL)
   } else {
-    // 로컬 파일 로드 (외부 URL 로드 시 이벤트 리스너 중복 문제 방지)
-    // 로그인은 팝업 방식으로 처리하므로 로컬 파일로도 정상 동작
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'))
+    // http://127.0.0.1:9123 으로 로드 — file://은 Firebase 인증 불가
+    // localhost는 Firebase 승인된 도메인에 기본 등록되어 있음
+    const distPath = path.join(__dirname, '../dist')
+    startLocalServer(distPath).then((url) => {
+      mainWindow.loadURL(url)
+    })
   }
 
   buildMenu(mainWindow)
