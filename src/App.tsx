@@ -460,7 +460,6 @@ export default function App() {
                   {tab.name}
                 </span>
               )}
-              {tab.isDirty && <span className="tab__unsaved" />}
               <button className="tab__close" onClick={e => handleCloseTab(tab.id, e)}>×</button>
             </div>
           ))}
