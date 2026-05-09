@@ -67,7 +67,7 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
-    mainWindow.webContents.openDevTools()
+    // mainWindow.webContents.openDevTools()
   })
 
 
@@ -95,11 +95,11 @@ function createWindow() {
   })
 
   // 팝업 창에도 DevTools 열기 (디버깅용)
-  app.on('browser-window-created', (_, window) => {
-    if (window !== mainWindow) {
-      window.webContents.openDevTools()
-    }
-  })
+  // app.on('browser-window-created', (_, window) => {
+  //   if (window !== mainWindow) {
+  //     window.webContents.openDevTools()
+  //   }
+  // })
 
   if (isDev) {
     mainWindow.loadURL(DEV_URL)
