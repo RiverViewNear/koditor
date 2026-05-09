@@ -166,7 +166,8 @@ html, body, #root {
   align-items: stretch;
   background: var(--c-bg-tab);
   border-bottom: 1px solid var(--c-border);
-  overflow: hidden;
+  overflow: visible;
+  min-width: 0;
 }
 
 .tabs-track {
@@ -175,9 +176,11 @@ html, body, #root {
   flex: 1;
   overflow-x: auto;
   overflow-y: hidden;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-border) transparent;
 }
-.tabs-track::-webkit-scrollbar { display: none; }
+.tabs-track::-webkit-scrollbar { height: 6px; }
+.tabs-track::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
 
 .tab {
   display: flex;
@@ -669,7 +672,7 @@ body.dark .editor-loading {
   scrollbar-color: var(--c-border) transparent;
   -webkit-overflow-scrolling: touch;
 }
-.tabs-track::-webkit-scrollbar { height: 3px; }
+.tabs-track::-webkit-scrollbar { height: 6px; }
 .tabs-track::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
 /* 탭이 줄어들지 않도록 */
 .tabs-track .tab { flex-shrink: 0; }

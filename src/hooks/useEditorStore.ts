@@ -16,8 +16,15 @@ export interface Tab {
 
 const uid = () => `tab-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
 
-export function makeBlankTab(): Tab {
-  return { id: uid(), name: 'untitled.txt', path: '', content: '', savedContent: '', language: 'plaintext', isDirty: false }
+function getUntitledName(existingTabs: Tab[]): string {
+  const names = new Set(existingTabs.map(t => t.name))
+  let n = 1
+  while (names.has(`untitled-${n}.txt`)) n++
+  return `untitled-${n}.txt`
+}
+
+export function makeBlankTab(existingTabs: Tab[] = []): Tab {
+  return { id: uid(), name: getUntitledName(existingTabs), path: '', content: '', savedContent: '', language: 'plaintext', isDirty: false }
 }
 
 export function useEditorStore() {
@@ -32,9 +39,11 @@ export function useEditorStore() {
   }, [])
 
   const openNewTab = useCallback(() => {
-    const tab = makeBlankTab()
-    setTabs(prev => [...prev, tab])
-    setActiveId(tab.id)
+    setTabs(prev => {
+      const tab = makeBlankTab(prev)
+      setActiveId(tab.id)
+      return [...prev, tab]
+    })
   }, [])
 
   const openFileAsTab = useCallback((name: string, path: string, content: string, language: string) => {
@@ -85,7 +94,7 @@ export function useEditorStore() {
   const closeTab = useCallback((tabId: string, onRemoved?: (id: string) => void) => {
     setTabs(prev => {
       if (prev.length === 1) {
-        const blank = makeBlankTab()
+        const blank = makeBlankTab(prev)
         setActiveId(blank.id)
         return [blank]
       }
