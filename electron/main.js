@@ -100,29 +100,12 @@ function createWindow() {
       if (wasMaximized) mainWindow.maximize()
     })
   } else {
-    // 1) 스플래시 HTML 인라인 (파일 의존성 없음)
-    const splashHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#f5f5f0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-.name{font-size:22px;font-weight:500;color:#aaa;letter-spacing:0.5px;margin-bottom:16px}
-.dots{display:flex;gap:6px}
-.dot{width:6px;height:6px;border-radius:50%;background:#aaa;animation:p 1.2s ease-in-out infinite}
-.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
-@keyframes p{0%,80%,100%{opacity:.2}40%{opacity:1}}
-</style></head><body>
-<div class="name">Pumice</div>
-<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-</body></html>`
-
-    // 2) 스플래시 렌더링 완료 시 창 표시 + 최대화
-    mainWindow.webContents.once('did-finish-load', () => {
+    mainWindow.once('ready-to-show', () => {
       mainWindow.show()
       if (wasMaximized) mainWindow.maximize()
     })
 
-    mainWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml))
-
-    // 3) 서버 준비되면 실제 앱 로드
+    // 서버 준비되면 실제 앱 로드
     const distPath = path.join(__dirname, '../dist')
     startLocalServer(distPath).then((url) => {
       mainWindow.loadURL(url)
