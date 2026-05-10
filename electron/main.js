@@ -73,10 +73,6 @@ function createWindow() {
     },
   })
 
-  if (store.get('windowMaximized', false)) {
-    mainWindow.maximize()
-  }
-
   mainWindow.on('close', () => {
     if (!mainWindow.isMaximized() && !mainWindow.isMinimized()) {
       store.set('windowBounds', mainWindow.getBounds())
@@ -111,8 +107,16 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL(DEV_URL)
+    if (store.get('windowMaximized', false)) mainWindow.maximize()
   } else {
     // 스플래시 즉시 로드 (창이 show:true 이므로 바로 보임)
+    // 스플래시 로드 완료 후 최대화 (그 전에 maximize하면 렌더링 깨짐)
+    mainWindow.webContents.once('did-finish-load', () => {
+      if (store.get('windowMaximized', false)) {
+        mainWindow.maximize()
+      }
+    })
+
     mainWindow.loadURL(`data:text/html;charset=utf-8,<!DOCTYPE html>
 <html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
