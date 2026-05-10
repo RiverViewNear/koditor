@@ -17,11 +17,9 @@ function startLocalServer(distPath) {
   return new Promise((resolve) => {
     localServer = http.createServer((req, res) => {
       let filePath = path.join(distPath, req.url === '/' ? 'index.html' : req.url)
-
       if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
         filePath = path.join(distPath, 'index.html')
       }
-
       const ext = path.extname(filePath).toLowerCase()
       const mimeTypes = {
         '.html': 'text/html', '.js': 'application/javascript',
@@ -29,18 +27,15 @@ function startLocalServer(distPath) {
         '.png': 'image/png',  '.svg': 'image/svg+xml',
         '.ico': 'image/x-icon', '.woff2': 'font/woff2',
       }
-      const contentType = mimeTypes[ext] || 'application/octet-stream'
-
       try {
         const data = fs.readFileSync(filePath)
-        res.writeHead(200, { 'Content-Type': contentType })
+        res.writeHead(200, { 'Content-Type': mimeTypes[ext] || 'application/octet-stream' })
         res.end(data)
       } catch {
         res.writeHead(404)
         res.end('Not found')
       }
     })
-
     localServer.listen(LOCAL_PORT, '127.0.0.1', () => {
       resolve(`http://127.0.0.1:${LOCAL_PORT}`)
     })
@@ -48,10 +43,8 @@ function startLocalServer(distPath) {
 }
 
 function createWindow() {
-  const bounds = store.get('windowBounds', { width: 1280, height: 800 })
-  const isDark = store.get('darkMode', false)
-  const bg = isDark ? '#1a1a1a' : '#f5f5f0'
-  const fg = isDark ? '#888' : '#999'
+  const bounds      = store.get('windowBounds', { width: 1280, height: 800 })
+  const wasMaximized = store.get('windowMaximized', false)
 
   mainWindow = new BrowserWindow({
     width:     bounds.width,
@@ -61,8 +54,8 @@ function createWindow() {
     minWidth:  800,
     minHeight: 500,
     title: 'Pumice',
-    show: true,  // 즉시 표시 (스플래시가 첫 화면)
-    backgroundColor: bg,
+    show: false,  // 스플래시 준비 완료 후 표시
+    backgroundColor: '#f5f5f0',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -73,31 +66,26 @@ function createWindow() {
     },
   })
 
+  // 창 닫힐 때 크기/위치/최대화 저장
   mainWindow.on('close', () => {
-    if (!mainWindow.isMaximized() && !mainWindow.isMinimized()) {
-      store.set('windowBounds', mainWindow.getBounds())
-    }
     store.set('windowMaximized', mainWindow.isMaximized())
+    // 최대화 상태여도 복원 크기 저장 (최대화 해제 시 돌아올 크기)
+    if (!mainWindow.isMinimized()) {
+      const b = mainWindow.getNormalBounds()
+      store.set('windowBounds', { width: b.width, height: b.height, x: b.x, y: b.y })
+    }
   })
 
-  mainWindow.on('closed', () => {
-    mainWindow = null
-  })
+  mainWindow.on('closed', () => { mainWindow = null })
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.includes('accounts.google.com') || url.includes('firebaseapp.com')) {
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
-          width: 500,
-          height: 700,
-          autoHideMenuBar: true,
-          menuBarVisible: false,
-          webPreferences: {
-            contextIsolation: true,
-            nodeIntegration: false,
-            partition: 'persist:main',
-          },
+          width: 500, height: 700,
+          autoHideMenuBar: true, menuBarVisible: false,
+          webPreferences: { contextIsolation: true, nodeIntegration: false, partition: 'persist:main' },
         },
       }
     }
@@ -107,32 +95,34 @@ function createWindow() {
 
   if (isDev) {
     mainWindow.loadURL(DEV_URL)
-    if (store.get('windowMaximized', false)) mainWindow.maximize()
-  } else {
-    // 스플래시 즉시 로드 (창이 show:true 이므로 바로 보임)
-    // 스플래시 로드 완료 후 최대화 (그 전에 maximize하면 렌더링 깨짐)
-    mainWindow.webContents.once('did-finish-load', () => {
-      if (store.get('windowMaximized', false)) {
-        mainWindow.maximize()
-      }
+    mainWindow.once('ready-to-show', () => {
+      mainWindow.show()
+      if (wasMaximized) mainWindow.maximize()
     })
-
-    mainWindow.loadURL(`data:text/html;charset=utf-8,<!DOCTYPE html>
-<html><head><meta charset="utf-8"><style>
+  } else {
+    // 1) 스플래시 HTML 인라인 (파일 의존성 없음)
+    const splashHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:${bg};display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
-.name{font-size:22px;font-weight:500;color:${fg};letter-spacing:0.5px;margin-bottom:16px}
+body{background:#f5f5f0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.name{font-size:22px;font-weight:500;color:#aaa;letter-spacing:0.5px;margin-bottom:16px}
 .dots{display:flex;gap:6px}
-.dot{width:6px;height:6px;border-radius:50%;background:${fg};animation:pulse 1.2s ease-in-out infinite}
-.dot:nth-child(2){animation-delay:0.2s}
-.dot:nth-child(3){animation-delay:0.4s}
-@keyframes pulse{0%,80%,100%{opacity:0.2}40%{opacity:1}}
+.dot{width:6px;height:6px;border-radius:50%;background:#aaa;animation:p 1.2s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes p{0%,80%,100%{opacity:.2}40%{opacity:1}}
 </style></head><body>
 <div class="name">Pumice</div>
 <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-</body></html>`)
+</body></html>`
 
-    // 서버 준비되면 실제 앱으로 전환
+    // 2) 스플래시 렌더링 완료 시 창 표시 + 최대화
+    mainWindow.webContents.once('did-finish-load', () => {
+      mainWindow.show()
+      if (wasMaximized) mainWindow.maximize()
+    })
+
+    mainWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml))
+
+    // 3) 서버 준비되면 실제 앱 로드
     const distPath = path.join(__dirname, '../dist')
     startLocalServer(distPath).then((url) => {
       mainWindow.loadURL(url)
@@ -154,15 +144,9 @@ function buildMenu(win, state = {}) {
     ...(isMac ? [{
       label: app.name,
       submenu: [
-        { role: 'about' },
-        { type: 'separator' },
-        { role: 'services' },
-        { type: 'separator' },
-        { role: 'hide' },
-        { role: 'hideOthers' },
-        { role: 'unhide' },
-        { type: 'separator' },
-        { role: 'quit' },
+        { role: 'about' }, { type: 'separator' }, { role: 'services' },
+        { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' },
+        { type: 'separator' }, { role: 'quit' },
       ],
     }] : []),
     {
@@ -180,13 +164,10 @@ function buildMenu(win, state = {}) {
     {
       label: '편집',
       submenu: [
-        { role: 'undo',      label: '실행 취소' },
-        { role: 'redo',      label: '다시 실행' },
+        { role: 'undo', label: '실행 취소' }, { role: 'redo', label: '다시 실행' },
         { type: 'separator' },
-        { role: 'cut',       label: '잘라내기' },
-        { role: 'copy',      label: '복사' },
-        { role: 'paste',     label: '붙여넣기' },
-        { role: 'selectAll', label: '모두 선택' },
+        { role: 'cut', label: '잘라내기' }, { role: 'copy', label: '복사' },
+        { role: 'paste', label: '붙여넣기' }, { role: 'selectAll', label: '모두 선택' },
         { type: 'separator' },
         { label: '찾기',   accelerator: 'CmdOrCtrl+F', click: () => win.webContents.send('menu:find') },
         { label: '바꾸기', accelerator: 'CmdOrCtrl+H', click: () => win.webContents.send('menu:replace') },
@@ -200,32 +181,24 @@ function buildMenu(win, state = {}) {
         { type: 'separator' },
         { label: columnMode   ? '열 블록 모드 끄기 ✓'  : '열 블록 모드 켜기',  click: () => win.webContents.send('menu:toggle-column') },
         { label: autoComplete ? '자동완성 끄기 ✓'      : '자동완성 켜기',      click: () => win.webContents.send('menu:toggle-autocomplete') },
-        { label: '줄 바꿈 토글', accelerator: 'Alt+Z',  click: () => win.webContents.send('menu:toggle-wordwrap') },
+        { label: '줄 바꿈 토글', accelerator: 'Alt+Z', click: () => win.webContents.send('menu:toggle-wordwrap') },
         { type: 'separator' },
         { label: '폰트 크기 확대',   accelerator: 'CmdOrCtrl+=', click: () => win.webContents.send('menu:font-increase') },
         { label: '폰트 크기 축소',   accelerator: 'CmdOrCtrl+-', click: () => win.webContents.send('menu:font-decrease') },
         { label: '폰트 크기 기본값', accelerator: 'CmdOrCtrl+0', click: () => win.webContents.send('menu:font-reset') },
         { type: 'separator' },
-        { role: 'reload',            label: '새로고침' },
+        { role: 'reload', label: '새로고침' },
         { type: 'separator' },
-        { role: 'zoomIn',            label: '확대' },
-        { role: 'zoomOut',           label: '축소' },
-        { role: 'resetZoom',         label: '기본 크기' },
+        { role: 'zoomIn', label: '확대' }, { role: 'zoomOut', label: '축소' }, { role: 'resetZoom', label: '기본 크기' },
         { type: 'separator' },
-        { role: 'togglefullscreen',  label: '전체 화면' },
-        ...(isDev ? [
-          { type: 'separator' },
-          { role: 'toggleDevTools',  label: '개발자 도구' },
-        ] : []),
+        { role: 'togglefullscreen', label: '전체 화면' },
+        ...(isDev ? [{ type: 'separator' }, { role: 'toggleDevTools', label: '개발자 도구' }] : []),
       ],
     },
     {
       label: '계정',
       submenu: [
-        ...(userName ? [
-          { label: userName, enabled: false },
-          { type: 'separator' },
-        ] : []),
+        ...(userName ? [{ label: userName, enabled: false }, { type: 'separator' }] : []),
         { label: '로그아웃', click: () => win.webContents.send('menu:sign-out') },
       ],
     },
@@ -256,12 +229,8 @@ ipcMain.handle('dialog:open-file', async () => {
 })
 
 ipcMain.handle('fs:save-file', async (_event, filePath, content) => {
-  try {
-    fs.writeFileSync(filePath, content, 'utf-8')
-    return { success: true }
-  } catch (err) {
-    return { success: false, error: String(err) }
-  }
+  try { fs.writeFileSync(filePath, content, 'utf-8'); return { success: true } }
+  catch (err) { return { success: false, error: String(err) } }
 })
 
 ipcMain.handle('dialog:save-as', async (_event, defaultName) => {
@@ -292,19 +261,15 @@ ipcMain.handle('dialog:open-file-encoding', async (_event, encoding) => {
   if (result.canceled || result.filePaths.length === 0) return null
   const filePath = result.filePaths[0]
   const buf = fs.readFileSync(filePath)
-  const content = iconv.decode(buf, encoding || 'utf-8')
-  return { name: path.basename(filePath), path: filePath, content }
+  return { name: path.basename(filePath), path: filePath, content: iconv.decode(buf, encoding || 'utf-8') }
 })
 
 ipcMain.handle('fs:save-file-encoding', async (_event, filePath, content, encoding) => {
   try {
     const iconv = require('iconv-lite')
-    const buf = iconv.encode(content, encoding || 'utf-8')
-    fs.writeFileSync(filePath, buf)
+    fs.writeFileSync(filePath, iconv.encode(content, encoding || 'utf-8'))
     return { success: true }
-  } catch (err) {
-    return { success: false, error: String(err) }
-  }
+  } catch (err) { return { success: false, error: String(err) } }
 })
 
 ipcMain.handle('dialog:save-as-encoding', async (_event, defaultName, content, encoding) => {
@@ -317,8 +282,7 @@ ipcMain.handle('dialog:save-as-encoding', async (_event, defaultName, content, e
     ],
   })
   if (result.canceled || !result.filePath) return null
-  const buf = iconv.encode(content, encoding || 'utf-8')
-  fs.writeFileSync(result.filePath, buf)
+  fs.writeFileSync(result.filePath, iconv.encode(content, encoding || 'utf-8'))
   return result.filePath
 })
 
@@ -333,9 +297,7 @@ ipcMain.handle('fs:open-folder-by-path', async (_event, folderPath) => {
   try {
     if (!fs.existsSync(folderPath)) return null
     return { name: path.basename(folderPath), path: folderPath, entries: readDirSync(folderPath) }
-  } catch {
-    return null
-  }
+  } catch { return null }
 })
 
 function readDirSync(dirPath, supportedExts = ['txt','js','jsx','ts','tsx','html','htm','css','java']) {
@@ -347,9 +309,7 @@ function readDirSync(dirPath, supportedExts = ['txt','js','jsx','ts','tsx','html
       entries.push({ name: item.name, path: fullPath, kind: 'directory', children: readDirSync(fullPath, supportedExts) })
     } else {
       const ext = item.name.split('.').pop()?.toLowerCase() ?? ''
-      if (supportedExts.includes(ext)) {
-        entries.push({ name: item.name, path: fullPath, kind: 'file' })
-      }
+      if (supportedExts.includes(ext)) entries.push({ name: item.name, path: fullPath, kind: 'file' })
     }
   }
   return entries.sort((a, b) => {
@@ -383,10 +343,7 @@ if (!gotLock) {
 }
 
 app.on('before-quit', () => {
-  if (localServer) {
-    localServer.close()
-    localServer = null
-  }
+  if (localServer) { localServer.close(); localServer = null }
 })
 
 app.on('window-all-closed', () => {
