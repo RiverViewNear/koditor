@@ -4,7 +4,6 @@ const fs    = require('fs')
 const http  = require('http')
 const Store = require('electron-store')
 
-// 창 크기/위치 저장소
 const store = new Store()
 
 const isDev   = process.env.NODE_ENV === 'development' || !app.isPackaged
@@ -14,13 +13,11 @@ let mainWindow    = null
 let localServer   = null
 const LOCAL_PORT  = 9123
 
-// ── 로컬 정적 파일 서버 (file:// 대신 http://localhost 사용) ──
 function startLocalServer(distPath) {
   return new Promise((resolve) => {
     localServer = http.createServer((req, res) => {
       let filePath = path.join(distPath, req.url === '/' ? 'index.html' : req.url)
 
-      // SPA 라우팅: 파일 없으면 index.html
       if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
         filePath = path.join(distPath, 'index.html')
       }
@@ -51,8 +48,10 @@ function startLocalServer(distPath) {
 }
 
 function createWindow() {
-  // 마지막 창 크기/위치 복원 (없으면 기본값)
   const bounds = store.get('windowBounds', { width: 1280, height: 800 })
+  const isDark = store.get('darkMode', false)
+  const bg = isDark ? '#1a1a1a' : '#f5f5f0'
+  const fg = isDark ? '#888' : '#999'
 
   mainWindow = new BrowserWindow({
     width:     bounds.width,
@@ -62,8 +61,8 @@ function createWindow() {
     minWidth:  800,
     minHeight: 500,
     title: 'Pumice',
-    show: false,
-    backgroundColor: '#f5f5f0',
+    show: true,  // 즉시 표시 (스플래시가 첫 화면)
+    backgroundColor: bg,
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -74,15 +73,10 @@ function createWindow() {
     },
   })
 
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show()
-    // 최대화 상태 복원
-    if (store.get('windowMaximized', false)) {
-      mainWindow.maximize()
-    }
-  })
+  if (store.get('windowMaximized', false)) {
+    mainWindow.maximize()
+  }
 
-  // 창 닫히기 전 크기/위치 저장
   mainWindow.on('close', () => {
     if (!mainWindow.isMaximized() && !mainWindow.isMinimized()) {
       store.set('windowBounds', mainWindow.getBounds())
@@ -94,9 +88,6 @@ function createWindow() {
     mainWindow = null
   })
 
-
-
-  // Google 로그인 팝업
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.includes('accounts.google.com') || url.includes('firebaseapp.com')) {
       return {
@@ -118,13 +109,26 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-
-
   if (isDev) {
     mainWindow.loadURL(DEV_URL)
   } else {
-    // http://127.0.0.1:9123 으로 로드 — file://은 Firebase 인증 불가
-    // localhost는 Firebase 승인된 도메인에 기본 등록되어 있음
+    // 스플래시 즉시 로드 (창이 show:true 이므로 바로 보임)
+    mainWindow.loadURL(`data:text/html;charset=utf-8,<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:${bg};display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.name{font-size:22px;font-weight:500;color:${fg};letter-spacing:0.5px;margin-bottom:16px}
+.dots{display:flex;gap:6px}
+.dot{width:6px;height:6px;border-radius:50%;background:${fg};animation:pulse 1.2s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:0.2s}
+.dot:nth-child(3){animation-delay:0.4s}
+@keyframes pulse{0%,80%,100%{opacity:0.2}40%{opacity:1}}
+</style></head><body>
+<div class="name">Pumice</div>
+<div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</body></html>`)
+
+    // 서버 준비되면 실제 앱으로 전환
     const distPath = path.join(__dirname, '../dist')
     startLocalServer(distPath).then((url) => {
       mainWindow.loadURL(url)
@@ -194,8 +198,8 @@ function buildMenu(win, state = {}) {
         { label: autoComplete ? '자동완성 끄기 ✓'      : '자동완성 켜기',      click: () => win.webContents.send('menu:toggle-autocomplete') },
         { label: '줄 바꿈 토글', accelerator: 'Alt+Z',  click: () => win.webContents.send('menu:toggle-wordwrap') },
         { type: 'separator' },
-        { label: '폰트 크기 확대', accelerator: 'CmdOrCtrl+=', click: () => win.webContents.send('menu:font-increase') },
-        { label: '폰트 크기 축소', accelerator: 'CmdOrCtrl+-', click: () => win.webContents.send('menu:font-decrease') },
+        { label: '폰트 크기 확대',   accelerator: 'CmdOrCtrl+=', click: () => win.webContents.send('menu:font-increase') },
+        { label: '폰트 크기 축소',   accelerator: 'CmdOrCtrl+-', click: () => win.webContents.send('menu:font-decrease') },
         { label: '폰트 크기 기본값', accelerator: 'CmdOrCtrl+0', click: () => win.webContents.send('menu:font-reset') },
         { type: 'separator' },
         { role: 'reload',            label: '새로고침' },
@@ -272,7 +276,6 @@ ipcMain.handle('fs:read-file', async (_event, filePath) => {
   return fs.readFileSync(filePath, 'utf-8')
 })
 
-// 인코딩 지정 파일 열기
 ipcMain.handle('dialog:open-file-encoding', async (_event, encoding) => {
   const iconv = require('iconv-lite')
   const result = await dialog.showOpenDialog({
@@ -289,7 +292,6 @@ ipcMain.handle('dialog:open-file-encoding', async (_event, encoding) => {
   return { name: path.basename(filePath), path: filePath, content }
 })
 
-// 인코딩 지정 파일 저장
 ipcMain.handle('fs:save-file-encoding', async (_event, filePath, content, encoding) => {
   try {
     const iconv = require('iconv-lite')
@@ -301,7 +303,6 @@ ipcMain.handle('fs:save-file-encoding', async (_event, filePath, content, encodi
   }
 })
 
-// 인코딩 지정 다른 이름으로 저장
 ipcMain.handle('dialog:save-as-encoding', async (_event, defaultName, content, encoding) => {
   const iconv = require('iconv-lite')
   const result = await dialog.showSaveDialog({
@@ -324,7 +325,6 @@ ipcMain.handle('dialog:open-folder', async () => {
   return { name: path.basename(folderPath), path: folderPath, entries: readDirSync(folderPath) }
 })
 
-// 경로로 직접 폴더 열기 (앱 재시작 시 마지막 폴더 복원용)
 ipcMain.handle('fs:open-folder-by-path', async (_event, folderPath) => {
   try {
     if (!fs.existsSync(folderPath)) return null
@@ -354,20 +354,30 @@ function readDirSync(dirPath, supportedExts = ['txt','js','jsx','ts','tsx','html
   })
 }
 
-// ── 상태 변경 시 메뉴 재빌드 ────────────────────────────────
 ipcMain.on('menu:update-state', (_event, state) => {
   if (mainWindow) buildMenu(mainWindow, state)
 })
 
-// ── 앱 라이프사이클 ───────────────────────────────────────
-app.whenReady().then(() => {
-  createWindow()
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+// ── 단일 인스턴스 잠금 ───────────────────────────────────
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
   })
-})
 
-// 앱 종료 전 로컬 서버 반드시 종료
+  app.whenReady().then(() => {
+    createWindow()
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
+  })
+}
+
 app.on('before-quit', () => {
   if (localServer) {
     localServer.close()
