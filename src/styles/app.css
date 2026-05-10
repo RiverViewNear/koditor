@@ -10,21 +10,21 @@
 }
 
 :root {
-  --c-bg-base:    #f5f5f0;
-  --c-bg-bar:     #ebebE6;
-  --c-bg-tab:     #e2e2dc;
-  --c-bg-active:  #ffffff;
-  --c-bg-hover:   #d8d8d2;
+  --c-bg-base:    #ebeae6;   /* 에디터 본문 */
+  --c-bg-bar:     #e4e1db;   /* 메뉴바 */
+  --c-bg-tab:     #cac6bf;   /* 탭바 — 확실히 어둡게 */
+  --c-bg-active:  #f5f4f0;   /* 활성 탭 — 본문보다 밝게 */
+  --c-bg-hover:   #c0bdb6;   /* 호버 */
 
-  --c-border:     #d0d0c8;
-  --c-border-mid: #b8b8b0;
+  --c-border:     #bfbcb5;   /* 테두리 */
+  --c-border-mid: #aaa8a0;   /* 강한 테두리 */
 
   --c-text-hi:    #1a1a1a;
-  --c-text-md:    #4a4a4a;
-  --c-text-lo:    #909088;
+  --c-text-md:    #3a3a38;
+  --c-text-lo:    #7d7c77;   /* 돌 텍스트줄 색 */
 
-  --c-accent:     #1a6bbf;
-  --c-accent-bg:  #ddeeff;
+  --c-accent:     #2e2e2c;   /* 로고 배경색 — 앱 이름/강조 */
+  --c-accent-bg:  #d8d5ce;   /* 강조 배경 */
   --c-dirty:      #b07800;
   --c-danger:     #c0392b;
 
