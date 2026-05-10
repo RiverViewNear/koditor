@@ -1,7 +1,7 @@
 {
-  "name": "koditor",
+  "name": "pumice",
   "version": "0.1.1",
-  "description": "Koditor - Web & Desktop Code Editor",
+  "description": "Pumice - The World's Lightest Floating Editor",
   "main": "electron/main.js",
   "private": true,
   "scripts": {
@@ -37,8 +37,8 @@
     "cross-env": "^7.0.3"
   },
   "build": {
-    "appId": "com.koditor.app",
-    "productName": "Koditor",
+    "appId": "com.pumice.app",
+    "productName": "Pumice",
     "directories": { "output": "release" },
     "files": ["dist/**/*", "electron/**/*"],
     "win": {

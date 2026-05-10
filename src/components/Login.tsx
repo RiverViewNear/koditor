@@ -15,7 +15,7 @@ export function Login({ onSignIn, loading }: LoginProps) {
     <div className="login">
       <div className="login__card">
         <div className="login__logo">
-          <span className="login__logo-text">Koditor</span>
+          <span className="login__logo-text">Pumice</span>
         </div>
 
         <p className="login__desc">

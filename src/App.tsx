@@ -513,7 +513,7 @@ export default function App() {
       {/* 메뉴바 */}
       {!isElectron() && (
         <header className="menubar">
-          <span className="menubar-brand">Koditor</span>
+          <span className="menubar-brand">Pumice</span>
           <nav className="menubar-nav" onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
             {menus.map(menu => (
               <div key={menu.id} className="dropdown">

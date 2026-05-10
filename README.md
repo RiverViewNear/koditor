@@ -1,4 +1,4 @@
-# Koditor
+# Pumice
 
 > 웹 + 데스크탑(Windows/macOS/Linux) 코드 에디터  
 > **React + Monaco Editor + Electron + Firebase**
@@ -203,7 +203,7 @@ npm run deploy
 빌드 전에 `assets/` 폴더에 플랫폼별 아이콘이 필요해요.
 
 ```
-koditor/
+Pumice/
 └── assets/
     ├── icon.ico    ← Windows용
     ├── icon.icns   ← macOS용
@@ -219,7 +219,7 @@ koditor/
 
 ```bash
 npm run build:electron
-# → release/Koditor Setup x.x.x.exe
+# → release/Pumice Setup x.x.x.exe
 ```
 
 > **오류 1 — npm 스크립트 실행 차단 (PSSecurityException)**
@@ -256,7 +256,7 @@ npm run build:electron
 ```bash
 # Mac에서 실행해야 함
 npm run build:electron
-# → release/Koditor-x.x.x.dmg
+# → release/Pumice-x.x.x.dmg
 ```
 
 ### Linux 빌드
@@ -264,8 +264,8 @@ npm run build:electron
 ```bash
 # Linux에서 실행해야 함
 npm run build:electron
-# → release/Koditor.deb
-# → release/Koditor.AppImage
+# → release/Pumice.deb
+# → release/Pumice.AppImage
 ```
 
 > **플랫폼 교차 빌드 불가:** Windows .exe는 Windows에서만, macOS .dmg는 Mac에서만, Linux .deb는 Linux에서만 빌드 가능합니다.
@@ -274,10 +274,10 @@ npm run build:electron
 
 ```
 release/
-├── Koditor Setup x.x.x.exe     ← Windows 설치 파일
-├── Koditor-x.x.x.dmg           ← macOS 설치 파일
-├── Koditor.deb                  ← Linux (Ubuntu/Debian)
-└── Koditor.AppImage             ← Linux (범용)
+├── Pumice Setup x.x.x.exe     ← Windows 설치 파일
+├── Pumice-x.x.x.dmg           ← macOS 설치 파일
+├── Pumice.deb                  ← Linux (Ubuntu/Debian)
+└── Pumice.AppImage             ← Linux (범용)
 ```
 
 ---
@@ -285,7 +285,7 @@ release/
 ## 프로젝트 구조
 
 ```
-koditor/
+Pumice/
 │
 ├── electron/                    ← Electron (데스크탑 래퍼)
 │   ├── main.js                  ← 메인 프로세스: 창/메뉴/IPC/파일시스템/로컬서버

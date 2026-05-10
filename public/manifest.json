@@ -1,11 +1,11 @@
 {
-  "name": "Koditor",
-  "short_name": "Koditor",
-  "description": "웹 + 데스크탑 코드 에디터",
+  "name": "Pumice",
+  "short_name": "Pumice",
+  "description": "세상에서 가장 가벼운 플로팅 에디터",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f5f0",
-  "theme_color": "#1a6bbf",
+  "background_color": "#ffffff",
+  "theme_color": "#e0f7fa",
   "orientation": "any",
   "icons": [
     {
