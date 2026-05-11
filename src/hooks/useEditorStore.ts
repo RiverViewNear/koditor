@@ -50,10 +50,10 @@ export function useEditorStore() {
 
   // ── 파일을 탭으로 열기 ────────────────────────────────────
   const openFileAsTab = useCallback((
-    name: string,
-    path: string,
-    content: string,
-    language: string,
+      name: string,
+      path: string,
+      content: string,
+      language: string,
   ) => {
     setTabs(prev => {
       if (path) {
@@ -75,9 +75,9 @@ export function useEditorStore() {
   // ── 에디터 내용 변경 ──────────────────────────────────────
   const updateContent = useCallback((tabId: string, content: string) => {
     setTabs(prev => prev.map(t =>
-      t.id === tabId
-        ? { ...t, content, isDirty: content !== t.savedContent }
-        : t
+        t.id === tabId
+            ? { ...t, content, isDirty: content !== t.savedContent }
+            : t
     ))
   }, [])
 
@@ -86,16 +86,16 @@ export function useEditorStore() {
     const trimmed = newName.trim()
     if (!trimmed) return
     setTabs(prev => prev.map(t =>
-      t.id === tabId ? { ...t, name: trimmed } : t
+        t.id === tabId ? { ...t, name: trimmed } : t
     ))
   }, [])
 
   // ── 저장 완료 처리 ────────────────────────────────────────
   const markSaved = useCallback((tabId: string, newPath?: string, newName?: string) => {
     setTabs(prev => prev.map(t =>
-      t.id === tabId
-        ? { ...t, savedContent: t.content, isDirty: false, path: newPath ?? t.path, name: newName ?? t.name }
-        : t
+        t.id === tabId
+            ? { ...t, savedContent: t.content, isDirty: false, path: newPath ?? t.path, name: newName ?? t.name }
+            : t
     ))
   }, [])
 

@@ -55,8 +55,8 @@ export function useSettings(user: User | null) {
 
   // ── 설정 변경 시 Firebase에 즉시 저장 ────────────────────
   const updateSetting = useCallback(async <K extends keyof Settings>(
-    key: K,
-    value: Settings[K],
+      key: K,
+      value: Settings[K],
   ) => {
     setSettings(prev => ({ ...prev, [key]: value }))
 
