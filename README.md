@@ -40,7 +40,7 @@
 | 웹 브라우저 실행 | Chrome/Edge 권장 |
 | Windows 설치 파일 (.exe) | `npm run build:electron` |
 | macOS 설치 파일 (.dmg) | `npm run build:electron` |
-| Linux 설치 파일 (.deb / .AppImage) | `npm run build:electron` |
+| Linux 설치 파일 (.AppImage) | `npm run build:electron` |
 
 ---
 
@@ -271,7 +271,6 @@ sudo apt-get install -y rpm fakeroot dpkg
 
 # 빌드
 npm run build:electron
-# → release/Pumice.deb
 # → release/Pumice.AppImage
 ```
 
@@ -286,7 +285,6 @@ npm run build:electron
 release/
 ├── Pumice Setup x.x.x.exe     ← Windows 설치 파일
 ├── Pumice-x.x.x.dmg           ← macOS 설치 파일
-├── Pumice.deb                  ← Linux (Ubuntu/Debian)
 └── Pumice.AppImage             ← Linux (범용)
 ```
 
