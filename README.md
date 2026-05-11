@@ -267,7 +267,7 @@ curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # Electron 빌드 의존성 설치
-sudo apt-get install -y rpm fakeroot dpkg
+sudo apt-get install -y rpm fakeroot dpkg binutils
 
 # 빌드
 npm run build:electron
@@ -276,6 +276,16 @@ npm run build:electron
 
 > **Ubuntu 버전 호환성:** 20.04에서 빌드한 파일은 22.04, 24.04에서 실행 가능합니다.  
 > `.deb`보다 **AppImage**가 버전 간 호환성이 더 안전합니다. AppImage는 필요한 라이브러리를 자체 포함하고 있어 OS 버전 차이에 덜 민감합니다.
+
+### AppImage 실행 전 준비 (Ubuntu 22.04 이상)
+
+Ubuntu 22.04부터 FUSE 2가 기본 설치되지 않아 AppImage 실행 시 오류가 발생할 수 있어요.
+
+```bash
+sudo apt install libfuse2
+```
+
+> **VMware 가상머신 주의사항:** VMware 환경에서는 GPU 드라이버 문제로 Electron 앱이 실행되지 않을 수 있어요. 물리 Linux 머신 사용을 권장합니다. VMware Tools 설치 및 3D 가속 활성화로 해결될 수 있지만 보장되지 않아요.
 
 > **플랫폼 교차 빌드 불가:** Windows .exe는 Windows에서만, macOS .dmg는 Mac에서만, Linux .deb는 Linux에서만 빌드 가능합니다.
 
