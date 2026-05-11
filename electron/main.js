@@ -80,8 +80,6 @@ function createWindow() {
     if (store.get('windowMaximized', false)) {
       mainWindow.maximize()
     }
-    // 디버깅용 개발자 도구 강제 오픈 (Mac 문제 확인 후 제거)
-    mainWindow.webContents.openDevTools()
   })
 
   // 로컬 서버 준비 전에 스플래시 먼저 표시
@@ -149,11 +147,15 @@ body{background:${bg};display:flex;flex-direction:column;align-items:center;just
 <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 </body></html>`)
 
-    // 서버 준비되면 실제 앱 로드
+    // 서버가 이미 실행 중이면 재사용, 아니면 새로 시작
     const distPath = path.join(__dirname, '../dist')
-    startLocalServer(distPath).then((url) => {
-      mainWindow.loadURL(url)
-    })
+    if (localServer) {
+      mainWindow.loadURL(`http://localhost:${LOCAL_PORT}`)
+    } else {
+      startLocalServer(distPath).then((url) => {
+        mainWindow.loadURL(url)
+      })
+    }
   }
 
   buildMenu(mainWindow)
