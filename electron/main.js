@@ -44,8 +44,8 @@ function startLocalServer(distPath) {
       }
     })
 
-    localServer.listen(LOCAL_PORT, '127.0.0.1', () => {
-      resolve(`http://127.0.0.1:${LOCAL_PORT}`)
+    localServer.listen(LOCAL_PORT, 'localhost', () => {
+      resolve(`http://localhost:${LOCAL_PORT}`)
     })
   })
 }

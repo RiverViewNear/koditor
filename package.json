@@ -51,7 +51,9 @@
       "target": ["dmg"],
       "icon": "assets/icon.icns",
       "category": "public.app-category.developer-tools",
-      "identity": null
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false
     },
     "linux": {
       "target": ["AppImage"],
