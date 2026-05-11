@@ -80,6 +80,8 @@ function createWindow() {
     if (store.get('windowMaximized', false)) {
       mainWindow.maximize()
     }
+    // 디버깅용 개발자 도구 강제 오픈 (Mac 문제 확인 후 제거)
+    mainWindow.webContents.openDevTools()
   })
 
   // 로컬 서버 준비 전에 스플래시 먼저 표시
