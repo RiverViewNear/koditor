@@ -61,10 +61,10 @@ function createWindow() {
     y:         bounds.y,
     minWidth:  800,
     minHeight: 500,
-    title: 'Koditor',
+    title: 'Pumice',
     show: false,
     backgroundColor: '#f5f5f0',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    titleBarStyle: 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
