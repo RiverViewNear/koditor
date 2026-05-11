@@ -262,11 +262,21 @@ npm run build:electron
 ### Linux 빌드
 
 ```bash
-# Linux에서 실행해야 함
+# Node 18+ 설치 (없으면)
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Electron 빌드 의존성 설치
+sudo apt-get install -y rpm fakeroot dpkg
+
+# 빌드
 npm run build:electron
 # → release/Pumice.deb
 # → release/Pumice.AppImage
 ```
+
+> **Ubuntu 버전 호환성:** 20.04에서 빌드한 파일은 22.04, 24.04에서 실행 가능합니다.  
+> `.deb`보다 **AppImage**가 버전 간 호환성이 더 안전합니다. AppImage는 필요한 라이브러리를 자체 포함하고 있어 OS 버전 차이에 덜 민감합니다.
 
 > **플랫폼 교차 빌드 불가:** Windows .exe는 Windows에서만, macOS .dmg는 Mac에서만, Linux .deb는 Linux에서만 빌드 가능합니다.
 
@@ -388,6 +398,7 @@ users/{uid}/
     sidebarOpen: true            ← 사이드바 ON/OFF
     fontSize: 14                 ← 폰트 크기
     encoding: "UTF-8"            ← 인코딩
+    wordWrap: false              ← 줄 바꿈 ON/OFF
     lastFolderPath: null         ← 마지막 폴더 경로 (데스크탑)
 ```
 
