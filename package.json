@@ -56,9 +56,17 @@
       "gatekeeperAssess": false
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "assets/icon.png",
       "category": "Utility"
     }
-  }
+  },
+  "author": {
+    "name": "Pumice",
+    "email": "pumice@ko-ditor.web.app"
+  },
+  "homepage": "https://ko-ditor.web.app"
 }
