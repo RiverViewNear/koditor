@@ -16,6 +16,7 @@ export interface Settings {
   lastFolderPath: string | null
   fontSize:       number
   encoding:       string
+  wordWrap:       boolean
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -26,6 +27,7 @@ const DEFAULT_SETTINGS: Settings = {
   lastFolderPath: null,
   fontSize:       14,
   encoding:       'UTF-8',
+  wordWrap:       false,
 }
 
 export function useSettings(user: User | null) {

@@ -116,7 +116,7 @@ export default function App() {
 
 
   const { settings, loaded: settingsLoaded, updateSetting } = useSettings(user)
-  const { autoComplete, darkMode, columnMode, sidebarOpen, fontSize, encoding } = settings
+  const { autoComplete, darkMode, columnMode, sidebarOpen, fontSize, encoding, wordWrap } = settings
 
   // ── UI 상태 ───────────────────────────────────────────────
   const [openMenu,      setOpenMenu]      = useState<string | null>(null)
@@ -170,6 +170,11 @@ export default function App() {
   // ── 다크모드 ──────────────────────────────────────────────
   useEffect(() => { document.body.classList.toggle('dark', darkMode) }, [darkMode])
 
+  // ── 줄 바꿈 상태 변경 시 에디터 즉시 반영 ────────────────
+  useEffect(() => {
+    editorRef.current?.updateOptions({ wordWrap: wordWrap ? 'on' : 'off' })
+  }, [wordWrap])
+
   // ── 네트워크 ──────────────────────────────────────────────
   useEffect(() => {
     const online  = () => { setSyncStatus('saved');   toast.info('온라인 상태로 복구됐어요.') }
@@ -215,9 +220,9 @@ export default function App() {
     if (!(window as any).electronAPI?.updateMenuState) return
     ;(window as any).electronAPI.updateMenuState({
       userName: user?.displayName ?? user?.email ?? null,
-      sidebarOpen, darkMode, columnMode, autoComplete,
+      sidebarOpen, darkMode, columnMode, autoComplete, wordWrap,
     })
-  }, [user, sidebarOpen, darkMode, columnMode, autoComplete])
+  }, [user, sidebarOpen, darkMode, columnMode, autoComplete, wordWrap])
 
   // ── 탭 이름 편집 ──────────────────────────────────────────
   const handleTabDoubleClick = useCallback((tabId: string, name: string, e: React.MouseEvent) => {
@@ -384,10 +389,7 @@ export default function App() {
       onMenuEvent('menu:toggle-theme',        () => updateSetting('darkMode', !darkMode)),
       onMenuEvent('menu:toggle-column',       toggleColumnMode),
       onMenuEvent('menu:toggle-autocomplete', toggleAutoComplete),
-      onMenuEvent('menu:toggle-wordwrap',     () => {
-        const cur = editorRef.current?.getOption(130 as Monaco.editor.EditorOption)
-        editorRef.current?.updateOptions({ wordWrap: cur === 'off' ? 'on' : 'off' })
-      }),
+      onMenuEvent('menu:toggle-wordwrap', () => updateSetting('wordWrap', !wordWrap)),
       onMenuEvent('menu:font-increase',  () => changeFontSize(+2)),
       onMenuEvent('menu:font-decrease',  () => changeFontSize(-2)),
       onMenuEvent('menu:font-reset',     () => changeFontSize('reset')),
@@ -467,11 +469,7 @@ export default function App() {
         { label: '폰트 크기 축소',                  shortcut: 'Ctrl+-', action: () => changeFontSize(-2) },
         { label: '폰트 크기 기본값 (14px)',          shortcut: 'Ctrl+0', action: () => changeFontSize('reset') },
         { type: 'sep' },
-        { label: '줄 바꿈 토글', shortcut: 'Alt+Z', action: () => {
-          const cur = editorRef.current?.getOption(130 as Monaco.editor.EditorOption)
-          editorRef.current?.updateOptions({ wordWrap: cur === 'off' ? 'on' : 'off' })
-          setOpenMenu(null)
-        }},
+        { label: `줄 바꿈 ${wordWrap ? '끄기 ✓' : '켜기'}`, shortcut: 'Alt+Z', action: () => { updateSetting('wordWrap', !wordWrap); setOpenMenu(null) } },
       ],
     },
     {
@@ -513,7 +511,7 @@ export default function App() {
       {/* 메뉴바 */}
       {!isElectron() && (
         <header className="menubar">
-          <span className="menubar-brand">Pumice</span>
+          <img src="/icons/icon-192.png" alt="Pumice" className="menubar-brand-icon" />
           <nav className="menubar-nav" onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()}>
             {menus.map(menu => (
               <div key={menu.id} className="dropdown">
@@ -624,7 +622,7 @@ export default function App() {
               guides: { bracketPairs: true, indentation: true },
               folding: true, foldingHighlight: true,
               selectionHighlight: false, occurrencesHighlight: 'off',
-              wordWrap: 'off', accessibilitySupport: 'off',
+              wordWrap: wordWrap ? 'on' : 'off', accessibilitySupport: 'off',
             }}
             onMount={handleEditorMount}
             onChange={value => handleContentChange(value ?? '')}
