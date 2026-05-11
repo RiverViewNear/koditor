@@ -54,7 +54,7 @@
       "identity": null
     },
     "linux": {
-      "target": ["deb", "AppImage"],
+      "target": ["AppImage"],
       "icon": "assets/icon.png",
       "category": "Utility"
     }
