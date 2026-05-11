@@ -464,12 +464,11 @@ export default function App() {
         { type: 'sep' },
         { label: `열 블록 모드 ${columnMode ? '끄기 ✓' : '켜기'}`, shortcut: '', action: () => { toggleColumnMode(); setOpenMenu(null) } },
         { label: `자동완성 ${autoComplete ? '끄기 ✓' : '켜기'}`,   shortcut: '', action: () => { toggleAutoComplete(); setOpenMenu(null) } },
+        { label: `줄 바꿈 ${wordWrap ? '끄기 ✓' : '켜기'}`, shortcut: 'Alt+Z', action: () => { updateSetting('wordWrap', !wordWrap); setOpenMenu(null) } },
         { type: 'sep' },
         { label: `폰트 크기 확대 (${fontSize}px)`, shortcut: 'Ctrl+=', action: () => changeFontSize(+2) },
         { label: '폰트 크기 축소',                  shortcut: 'Ctrl+-', action: () => changeFontSize(-2) },
         { label: '폰트 크기 기본값 (14px)',          shortcut: 'Ctrl+0', action: () => changeFontSize('reset') },
-        { type: 'sep' },
-        { label: `줄 바꿈 ${wordWrap ? '끄기 ✓' : '켜기'}`, shortcut: 'Alt+Z', action: () => { updateSetting('wordWrap', !wordWrap); setOpenMenu(null) } },
       ],
     },
     {
