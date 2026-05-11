@@ -5,7 +5,7 @@
  * 실제 데이터 동기화는 Firebase SDK가 담당
  */
 
-const CACHE_NAME = 'pumice-v2'
+const CACHE_NAME = 'pumice-v3'
 
 // 앱 실행에 필요한 정적 파일 캐시
 const PRECACHE = ['/', '/index.html']
